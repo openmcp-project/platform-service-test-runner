@@ -1,0 +1,10 @@
+apiVersion: test-runner.openmcp.cloud/v1alpha1
+kind: E2ETestRun
+metadata:
+  name: test-run-05
+  namespace: test-run-05-ns
+spec:
+  runner:
+    version: "latest"
+  testcases:
+    - name: fakeTest

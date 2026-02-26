@@ -3,9 +3,28 @@
 # and allow the plugins properly work.
 # More info: https://book.kubebuilder.io/reference/project-config.html
 cliVersion: 4.9.0
-domain: testrunner.openmcp.cloud
+domain: test-runner.openmcp.cloud
 layout:
 - go.kubebuilder.io/v4
 projectName: platform-service-test-runner
 repo: github.com/openmcp-project/platform-service-testrunner
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: test-runner.openmcp.cloud
+  group: testing.openmcp.cloud
+  kind: E2ETestSpecification
+  path: github.com/openmcp-project/platform-service-test-runner/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: test-runner.openmcp.cloud
+  group: testing.openmcp.cloud
+  kind: E2ETestRun
+  path: github.com/openmcp-project/platform-service-test-runner/api/v1alpha1
+  version: v1alpha1
 version: "3"

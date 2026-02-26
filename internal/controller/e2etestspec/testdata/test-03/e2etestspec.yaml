@@ -1,0 +1,14 @@
+apiVersion: test-runner.openmcp.cloud/v1alpha1
+kind: E2ETestSpecification
+metadata:
+  name: test-specification-03
+  namespace: test-specification-03-ns
+spec:
+  schedule: "* * * * *" # Schedule the test to run every minute
+  testCases:
+    - name: createProject
+      config:
+        chargingTargetType: "btp"
+        chargingTarget: "12345678-1234-1234-1234-123456789012"
+    - name: createWorkspace
+    - name: createManagedControlPlaneV2
