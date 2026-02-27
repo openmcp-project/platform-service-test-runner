@@ -10,11 +10,7 @@ import (
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/openmcp-project/platform-service-test-runner/internal/util"
 
 	"github.com/openmcp-project/platform-service-test-runner/api/v1alpha1"
 )
@@ -39,6 +35,7 @@ type CreateProjectTest struct {
 func (c *CreateProjectTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, config map[string]string) (map[string]string, map[string]string, error) {
 	log := logging.FromContextOrPanic(ctx).WithName(createProject)
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	defer cancel()
 
 	projectName := fmt.Sprintf("%s-p", run.Name)
 	members := []pwv1alpha1.ProjectMember{
@@ -67,16 +64,19 @@ func (c *CreateProjectTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, c
 		Spec: pwv1alpha1.ProjectSpec{Members: members},
 	}
 
-	defer cancel()
 	if err := c.OnboardingClient.Create(ctx, project); err != nil {
 		return nil, nil, fmt.Errorf("project creation failed: %w", err)
 	}
+
 	log.Debug("Project created", "name", project.Name)
-	project, err := c.waitForReadyAndGet(ctx, projectName, "")
+
+	project, err := WaitForReadyAndGet(ctx, c.OnboardingClient, projectName, "", project, IsProjectReady)
 	if err != nil {
 		return nil, nil, fmt.Errorf("polling after project creation failed: %w", err)
 	}
+
 	log.Debug("Project ready", keyProjectName, project.Name, keyProjectStatusNamespace, project.Status.Namespace)
+
 	return map[string]string{
 		keyProjectName:            project.Name,
 		keyProjectStatusNamespace: project.Status.Namespace,
@@ -89,7 +89,7 @@ func (c *CreateProjectTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRu
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 
-	ownStatus, found := util.GetStatus(createProject, run.Status.TestCases)
+	ownStatus, found := GetStatus(createProject, run.Status.TestCases)
 	if !found {
 		return fmt.Errorf("cannot find '%s' test case status", createProject)
 	}
@@ -109,37 +109,17 @@ func (c *CreateProjectTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRu
 	}
 
 	// Wait for deletion to complete
-	err := c.waitForDeletion(ctx, projectName)
+	err := WaitForDeletion(ctx, c.OnboardingClient, projectName, "", &pwv1alpha1.Project{})
 	if err != nil {
 		return fmt.Errorf("polling after project deletion failed: %w", err)
 	}
+
 	log.Debug("Project deleted", keyProjectName, project.Name)
+
 	return nil
 }
 
-func (c *CreateProjectTest) waitForReadyAndGet(ctx context.Context, name, namespace string) (*pwv1alpha1.Project, error) {
-	project := &pwv1alpha1.Project{}
-	err := wait.PollUntilContextTimeout(ctx, 10*time.Second, 5*time.Minute, true, func(ctx context.Context) (bool, error) {
-		if err := c.OnboardingClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, project); err != nil {
-			return false, err
-		}
-		if project.Status.Namespace != "" {
-			return true, nil
-		}
-		return false, nil
-	})
-	return project, err
-}
-
-func (c *CreateProjectTest) waitForDeletion(ctx context.Context, name string) error {
-	return wait.PollUntilContextTimeout(ctx, 2*time.Second, 2*time.Minute, true, func(ctx context.Context) (bool, error) {
-		err := c.OnboardingClient.Get(ctx, types.NamespacedName{Name: name}, &pwv1alpha1.Project{})
-		if errors.IsNotFound(err) {
-			return true, nil // Resource is gone
-		}
-		if err != nil {
-			return false, err // Unexpected error
-		}
-		return false, nil // Still exists, keep polling
-	})
+// IsProjectReady checks if a Project is ready by verifying its status namespace is set.
+func IsProjectReady(project *pwv1alpha1.Project) bool {
+	return project.Status.Namespace != ""
 }

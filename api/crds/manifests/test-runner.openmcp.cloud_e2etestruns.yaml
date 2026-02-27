@@ -76,7 +76,9 @@ spec:
                 items:
                   properties:
                     debugInfo:
-                      type: string
+                      additionalProperties:
+                        type: string
+                      type: object
                     error:
                       type: string
                     exports:

@@ -10,11 +10,7 @@ import (
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/openmcp-project/platform-service-test-runner/internal/util"
 
 	"github.com/openmcp-project/platform-service-test-runner/api/v1alpha1"
 )
@@ -37,8 +33,8 @@ func (c *CreateWorkspaceTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun,
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 
-	// worspace creation depends on project creation, so we need to get the project namespace from the previous test case's exports
-	pTest, found := util.GetStatus(createProject, run.Status.TestCases)
+	// Workspace creation depends on project creation, so we need to get the project namespace from the previous test case's exports
+	pTest, found := GetStatus(createProject, run.Status.TestCases)
 	if !found {
 		return nil, nil, fmt.Errorf("dependent test case %s has no status", createProject)
 	}
@@ -79,7 +75,7 @@ func (c *CreateWorkspaceTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun,
 	}
 	log.Debug("Workspace created", keyWorkspaceName, workspace.Name, keyWorkspaceNamespace, workspace.Namespace)
 
-	workspace, err := c.waitForReadyAndGet(ctx, wsName, wsNamespace)
+	workspace, err := WaitForReadyAndGet(ctx, c.OnboardingClient, wsName, wsNamespace, workspace, IsWorkspaceReady)
 	if err != nil {
 		return nil, nil, fmt.Errorf("polling workspace after creation failed: %w", err)
 	}
@@ -98,7 +94,7 @@ func (c *CreateWorkspaceTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETest
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 
-	ownStatus, found := util.GetStatus(createWorkspace, run.Status.TestCases)
+	ownStatus, found := GetStatus(createWorkspace, run.Status.TestCases)
 	if !found {
 		return fmt.Errorf("cannot find '%s' test case status", createWorkspace)
 	}
@@ -120,7 +116,7 @@ func (c *CreateWorkspaceTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETest
 	}
 
 	// Wait for deletion to complete
-	err := c.waitForDeletion(ctx, wsName, wsNamespace)
+	err := WaitForDeletion(ctx, c.OnboardingClient, wsName, wsNamespace, &pwv1alpha1.Workspace{})
 	if err != nil {
 		return fmt.Errorf("polling after workspace deletion failed: %w", err)
 	}
@@ -128,29 +124,7 @@ func (c *CreateWorkspaceTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETest
 	return nil
 }
 
-func (c *CreateWorkspaceTest) waitForReadyAndGet(ctx context.Context, name, namespace string) (*pwv1alpha1.Workspace, error) {
-	ws := &pwv1alpha1.Workspace{}
-	err := wait.PollUntilContextTimeout(ctx, 10*time.Second, 5*time.Minute, true, func(ctx context.Context) (bool, error) {
-		if err := c.OnboardingClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, ws); err != nil {
-			return false, err
-		}
-		if ws.Status.Namespace != "" {
-			return true, nil
-		}
-		return false, nil
-	})
-	return ws, err
-}
-
-func (c *CreateWorkspaceTest) waitForDeletion(ctx context.Context, name, namespace string) error {
-	return wait.PollUntilContextTimeout(ctx, 2*time.Second, 2*time.Minute, true, func(ctx context.Context) (bool, error) {
-		err := c.OnboardingClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &pwv1alpha1.Workspace{})
-		if errors.IsNotFound(err) {
-			return true, nil // Resource is gone
-		}
-		if err != nil {
-			return false, err // Unexpected error
-		}
-		return false, nil // Still exists, keep polling
-	})
+// IsWorkspaceReady checks if a Workspace is ready by verifying its status namespace is set.
+func IsWorkspaceReady(ws *pwv1alpha1.Workspace) bool {
+	return ws.Status.Namespace != ""
 }

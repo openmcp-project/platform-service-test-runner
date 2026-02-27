@@ -20,7 +20,7 @@ type TestCaseStatus struct {
 	Status    string            `json:"status"`
 	Exports   map[string]string `json:"exports,omitempty"`
 	Error     string            `json:"error,omitempty"`
-	DebugInfo string            `json:"debugInfo,omitempty"`
+	DebugInfo map[string]string `json:"debugInfo,omitempty"`
 }
 
 // E2ETestRunStatus defines the observed state of E2ETestRun.

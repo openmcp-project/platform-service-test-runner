@@ -10,11 +10,7 @@ import (
 	omcpv2alpha1 "github.com/openmcp-project/openmcp-operator/api/core/v2alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/openmcp-project/platform-service-test-runner/internal/util"
 
 	"github.com/openmcp-project/platform-service-test-runner/api/v1alpha1"
 )
@@ -37,7 +33,7 @@ func (c *CreateMcpTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, _ map
 	defer cancel()
 
 	// mcp creation depends on workspace creation, so we need to get the workspace namespace from the previous test case's exports
-	wsTest, found := util.GetStatus(createWorkspace, run.Status.TestCases)
+	wsTest, found := GetStatus(createWorkspace, run.Status.TestCases)
 	if !found {
 		return nil, nil, fmt.Errorf("dependent test case %s has no status", createWorkspace)
 	}
@@ -64,7 +60,7 @@ func (c *CreateMcpTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, _ map
 	}
 	log.Info("MCPv2 created", keyMcpName, mcp.Name, keyMcpNamespace, mcp.Namespace)
 
-	mcp, err := c.waitForReadyAndGet(ctx, mcpName, ns)
+	mcp, err := WaitForReadyAndGet(ctx, c.OnboardingClient, mcpName, ns, mcp, IsMcpReady)
 	if err != nil {
 		return nil, nil, fmt.Errorf("polling MCPv2 after creation: %w", err)
 	}
@@ -82,7 +78,7 @@ func (c *CreateMcpTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRun, _
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 
-	ownStatus, found := util.GetStatus(createMcpV2, run.Status.TestCases)
+	ownStatus, found := GetStatus(createMcpV2, run.Status.TestCases)
 	if !found {
 		return fmt.Errorf("cannot find '%s' test case status", createMcpV2)
 	}
@@ -105,7 +101,7 @@ func (c *CreateMcpTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRun, _
 	}
 
 	// Wait for deletion to complete
-	err := c.WaitForDeletion(ctx, mcpName, mcpNs)
+	err := WaitForDeletion(ctx, c.OnboardingClient, mcpName, mcpNs, &omcpv2alpha1.ManagedControlPlaneV2{})
 	if err != nil {
 		return fmt.Errorf("polling MCPv2 after deletion failed: %w", err)
 	}
@@ -114,29 +110,7 @@ func (c *CreateMcpTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRun, _
 	return nil
 }
 
-func (c *CreateMcpTest) waitForReadyAndGet(ctx context.Context, name, namespace string) (*omcpv2alpha1.ManagedControlPlaneV2, error) {
-	mcp := &omcpv2alpha1.ManagedControlPlaneV2{}
-	err := wait.PollUntilContextTimeout(ctx, 10*time.Second, 5*time.Minute, true, func(ctx context.Context) (bool, error) {
-		if err := c.OnboardingClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, mcp); err != nil {
-			return false, err
-		}
-		if mcp.Status.Phase == common.StatusPhaseReady {
-			return true, nil
-		}
-		return false, nil
-	})
-	return mcp, err
-}
-
-func (c *CreateMcpTest) WaitForDeletion(ctx context.Context, name, namespace string) error {
-	return wait.PollUntilContextTimeout(ctx, 2*time.Second, 2*time.Minute, true, func(ctx context.Context) (bool, error) {
-		err := c.OnboardingClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &omcpv2alpha1.ManagedControlPlaneV2{})
-		if errors.IsNotFound(err) {
-			return true, nil // Resource is gone
-		}
-		if err != nil {
-			return false, err // Unexpected error
-		}
-		return false, nil // Still exists, keep polling
-	})
+// IsMcpReady checks if a ManagedControlPlaneV2 is ready by verifying its status phase.
+func IsMcpReady(mcp *omcpv2alpha1.ManagedControlPlaneV2) bool {
+	return mcp.Status.Phase == common.StatusPhaseReady
 }

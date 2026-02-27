@@ -10,8 +10,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/openmcp-project/platform-service-test-runner/internal/util"
-
 	testingopenmcpcloudv1alpha1 "github.com/openmcp-project/platform-service-test-runner/api/v1alpha1"
 	"github.com/openmcp-project/platform-service-test-runner/internal/runner"
 )
@@ -58,7 +56,7 @@ func (r *E2ETestRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			log.Error(nil, "test not found in registry", "testName", testCaseSpec.Name)
 			return ctrl.Result{}, fmt.Errorf("test not found in registry, testName %s", testCaseSpec.Name)
 		}
-		existingStatus, found := util.GetStatus(testCaseSpec.Name, run.Status.TestCases)
+		existingStatus, found := runner.GetStatus(testCaseSpec.Name, run.Status.TestCases)
 
 		// if already passed -> skip
 		if found && existingStatus.Status == TestStatusPassed {
@@ -72,7 +70,7 @@ func (r *E2ETestRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 
 		log.Info("Running test", "testName", testCaseSpec.Name)
-		testExports, _, err := testCase.Run(ctx, run, map[string]string{"identity": r.identity})
+		testExports, debugInfo, err := testCase.Run(ctx, run, map[string]string{"identity": r.identity})
 		if err != nil {
 			log.Error(err, "error running test", "testName", testCaseSpec.Name)
 			run.Status.TestCases = append(run.Status.TestCases, testingopenmcpcloudv1alpha1.TestCaseStatus{
@@ -80,7 +78,7 @@ func (r *E2ETestRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				Status:    TestStatusFailed,
 				Exports:   testExports,
 				Error:     err.Error(),
-				DebugInfo: "",
+				DebugInfo: debugInfo,
 			})
 			// Update status and stop running further tests if any test fails.
 			if err := r.platformCluster.Client().Status().Update(ctx, run); err != nil {
@@ -113,7 +111,7 @@ func (r *E2ETestRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 		err := test.Cleanup(ctx, run, nil)
 		if err != nil {
-			existingStatus, _ := util.GetStatus(testCase.Name, run.Status.TestCases)
+			existingStatus, _ := runner.GetStatus(testCase.Name, run.Status.TestCases)
 			existingStatus.Status = TestStatusFailed
 			existingStatus.Error = err.Error()
 
