@@ -60,7 +60,7 @@ func (c *CreateMcpTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, _ map
 	}
 	log.Info("MCPv2 created", keyMcpName, mcp.Name, keyMcpNamespace, mcp.Namespace)
 
-	mcp, err := WaitForReadyAndGet(ctx, c.OnboardingClient, mcpName, ns, mcp, IsMcpReady)
+	mcp, err := WaitForReadyAndGet(ctx, c.OnboardingClient, mcpName, ns, mcp, defaultPollInterval, defaultPollTimeout, IsMcpReady)
 	if err != nil {
 		return nil, nil, fmt.Errorf("polling MCPv2 after creation: %w", err)
 	}
@@ -101,7 +101,7 @@ func (c *CreateMcpTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRun, _
 	}
 
 	// Wait for deletion to complete
-	err := WaitForDeletion(ctx, c.OnboardingClient, mcpName, mcpNs, &omcpv2alpha1.ManagedControlPlaneV2{})
+	err := WaitForDeletion(ctx, c.OnboardingClient, mcpName, mcpNs, &omcpv2alpha1.ManagedControlPlaneV2{}, defaultPollInterval, defaultPollTimeout)
 	if err != nil {
 		return fmt.Errorf("polling MCPv2 after deletion failed: %w", err)
 	}

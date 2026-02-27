@@ -70,7 +70,7 @@ func (c *CreateProjectTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, c
 
 	log.Debug("Project created", "name", project.Name)
 
-	project, err := WaitForReadyAndGet(ctx, c.OnboardingClient, projectName, "", project, IsProjectReady)
+	project, err := WaitForReadyAndGet(ctx, c.OnboardingClient, projectName, "", project, defaultPollInterval, defaultPollTimeout, IsProjectReady)
 	if err != nil {
 		return nil, nil, fmt.Errorf("polling after project creation failed: %w", err)
 	}
@@ -109,7 +109,7 @@ func (c *CreateProjectTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRu
 	}
 
 	// Wait for deletion to complete
-	err := WaitForDeletion(ctx, c.OnboardingClient, projectName, "", &pwv1alpha1.Project{})
+	err := WaitForDeletion(ctx, c.OnboardingClient, projectName, "", &pwv1alpha1.Project{}, defaultPollInterval, defaultPollTimeout)
 	if err != nil {
 		return fmt.Errorf("polling after project deletion failed: %w", err)
 	}

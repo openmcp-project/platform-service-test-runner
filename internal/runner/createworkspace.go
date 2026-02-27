@@ -75,7 +75,7 @@ func (c *CreateWorkspaceTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun,
 	}
 	log.Debug("Workspace created", keyWorkspaceName, workspace.Name, keyWorkspaceNamespace, workspace.Namespace)
 
-	workspace, err := WaitForReadyAndGet(ctx, c.OnboardingClient, wsName, wsNamespace, workspace, IsWorkspaceReady)
+	workspace, err := WaitForReadyAndGet(ctx, c.OnboardingClient, wsName, wsNamespace, workspace, defaultPollInterval, defaultPollTimeout, IsWorkspaceReady)
 	if err != nil {
 		return nil, nil, fmt.Errorf("polling workspace after creation failed: %w", err)
 	}
@@ -116,7 +116,7 @@ func (c *CreateWorkspaceTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETest
 	}
 
 	// Wait for deletion to complete
-	err := WaitForDeletion(ctx, c.OnboardingClient, wsName, wsNamespace, &pwv1alpha1.Workspace{})
+	err := WaitForDeletion(ctx, c.OnboardingClient, wsName, wsNamespace, &pwv1alpha1.Workspace{}, defaultPollInterval, defaultPollTimeout)
 	if err != nil {
 		return fmt.Errorf("polling after workspace deletion failed: %w", err)
 	}

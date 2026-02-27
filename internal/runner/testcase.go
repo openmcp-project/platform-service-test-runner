@@ -15,6 +15,9 @@ import (
 const (
 	labelTestCase  = "test-case"
 	configIdentity = "identity"
+
+	defaultPollInterval = 10 * time.Second
+	defaultPollTimeout  = 5 * time.Minute
 )
 
 // TestCase defines the interface for a modular E2E test case. Each test case must implement Run and Cleanup.
@@ -47,9 +50,11 @@ func WaitForReadyAndGet[T client.Object](
 	k8sClient client.Client,
 	name, namespace string,
 	obj T,
+	pollInterval time.Duration,
+	pollTimeout time.Duration,
 	readyCheck ReadyCheckFunc[T],
 ) (T, error) {
-	err := wait.PollUntilContextTimeout(ctx, 10*time.Second, 5*time.Minute, true, func(ctx context.Context) (bool, error) {
+	err := wait.PollUntilContextTimeout(ctx, pollInterval, pollTimeout, true, func(ctx context.Context) (bool, error) {
 		if err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, obj); err != nil {
 			return false, err
 		}
@@ -65,8 +70,10 @@ func WaitForDeletion[T client.Object](
 	k8sClient client.Client,
 	name, namespace string,
 	obj T,
+	pollInterval time.Duration,
+	pollTimeout time.Duration,
 ) error {
-	return wait.PollUntilContextTimeout(ctx, 2*time.Second, 2*time.Minute, true, func(ctx context.Context) (bool, error) {
+	return wait.PollUntilContextTimeout(ctx, pollInterval, pollTimeout, true, func(ctx context.Context) (bool, error) {
 		err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, obj)
 		if errors.IsNotFound(err) {
 			return true, nil // Resource is gone
