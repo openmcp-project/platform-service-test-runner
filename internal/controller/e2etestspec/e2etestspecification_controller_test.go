@@ -92,8 +92,8 @@ var _ = Describe("E2ETestSpecificationReconciler", func() {
 		)).To(Succeed())
 		Expect(testRunList.Items).To(HaveLen(1))
 		Expect(testRunList.Items[0].Spec.TestCases).To(HaveLen(3))
-		Expect(testRunList.Items[0].Spec.TestCases[0].Config).To(HaveKey("chargingTarget"))
-		Expect(testRunList.Items[0].Spec.TestCases[0].Config).To(HaveKey("chargingTargetType"))
+		Expect(string(testRunList.Items[0].Spec.TestCases[0].Config)).To(ContainSubstring("chargingTarget"))
+		Expect(string(testRunList.Items[0].Spec.TestCases[0].Config)).To(ContainSubstring("chargingTargetType"))
 	})
 
 })

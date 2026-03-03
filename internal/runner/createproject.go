@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -11,6 +12,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/openmcp-project/platform-service-test-runner/internal/utils"
 
 	"github.com/openmcp-project/platform-service-test-runner/api/v1alpha1"
 )
@@ -32,17 +35,22 @@ type CreateProjectTest struct {
 // Run creates a project with the given configuration and waits until it's ready.
 // It returns the project name and status namespace as exports for other test cases to use.
 // It reads chargingTarget and chargingTargetType from the config to set labels for cost allocation, if provided.
-func (c *CreateProjectTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, config map[string]string) (map[string]string, map[string]string, error) {
+func (c *CreateProjectTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, config Config) (Exports, DebugInfo, error) {
 	log := logging.FromContextOrPanic(ctx).WithName(createProject)
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 
 	projectName := fmt.Sprintf("%s-p", run.Name)
+
+	identity := utils.GetAsString(config, configIdentity)
+	if identity == "" {
+		return nil, nil, fmt.Errorf("config %s not found or empty", configIdentity)
+	}
 	members := []pwv1alpha1.ProjectMember{
 		{
 			Subject: pwv1alpha1.Subject{
 				Kind: v1.UserKind,
-				Name: config[configIdentity],
+				Name: identity,
 			},
 			Roles: []pwv1alpha1.ProjectMemberRole{
 				pwv1alpha1.ProjectRoleAdmin,
@@ -51,9 +59,13 @@ func (c *CreateProjectTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, c
 	}
 
 	labels := map[string]string{labelTestCase: createProject}
-	if config[configChargingTarget] != "" && config[configChargingTargetType] != "" {
-		labels[labelChargingTarget] = config[configChargingTarget]
-		labels[labelChargingTargetType] = config[configChargingTargetType]
+	chargingTargetType := utils.GetAsString(config, configChargingTargetType)
+	if chargingTargetType != "" {
+		labels[labelChargingTargetType] = chargingTargetType
+	}
+	chargingTarget := utils.GetAsString(config, configChargingTarget)
+	if chargingTarget != "" {
+		labels[labelChargingTarget] = chargingTarget
 	}
 
 	project := &pwv1alpha1.Project{
@@ -77,14 +89,14 @@ func (c *CreateProjectTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, c
 
 	log.Debug("Project ready", keyProjectName, project.Name, keyProjectStatusNamespace, project.Status.Namespace)
 
-	return map[string]string{
+	return Exports{
 		keyProjectName:            project.Name,
 		keyProjectStatusNamespace: project.Status.Namespace,
 	}, nil, nil
 }
 
 // Cleanup deletes the project created in the Run method, identified via own export. It waits until the project is fully deleted before returning.
-func (c *CreateProjectTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRun, _ map[string]string) error {
+func (c *CreateProjectTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRun, _ Config) error {
 	log := logging.FromContextOrPanic(ctx).WithName(createProject)
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
@@ -93,7 +105,17 @@ func (c *CreateProjectTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRu
 	if !found {
 		return fmt.Errorf("cannot find '%s' test case status", createProject)
 	}
-	projectName := ownStatus.Exports[keyProjectName]
+
+	// Unmarshal exports from JSON
+	var exports Exports
+	if err := json.Unmarshal(ownStatus.Exports, &exports); err != nil {
+		return fmt.Errorf("failed to unmarshal exports from %s: %w", createProject, err)
+	}
+
+	projectName := utils.GetAsString(exports, keyProjectName)
+	if projectName == "" {
+		return fmt.Errorf("export %s not found or empty", keyProjectName)
+	}
 
 	project := &pwv1alpha1.Project{
 		ObjectMeta: metav1.ObjectMeta{

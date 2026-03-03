@@ -5,6 +5,8 @@
 package v1alpha1
 
 import (
+	"encoding/json"
+
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -237,10 +239,8 @@ func (in *TestCase) DeepCopyInto(out *TestCase) {
 	*out = *in
 	if in.Config != nil {
 		in, out := &in.Config, &out.Config
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
+		*out = make(json.RawMessage, len(*in))
+		copy(*out, *in)
 	}
 }
 
@@ -259,17 +259,13 @@ func (in *TestCaseStatus) DeepCopyInto(out *TestCaseStatus) {
 	*out = *in
 	if in.Exports != nil {
 		in, out := &in.Exports, &out.Exports
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
+		*out = make(json.RawMessage, len(*in))
+		copy(*out, *in)
 	}
 	if in.DebugInfo != nil {
 		in, out := &in.DebugInfo, &out.DebugInfo
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
+		*out = make(json.RawMessage, len(*in))
+		copy(*out, *in)
 	}
 }
 

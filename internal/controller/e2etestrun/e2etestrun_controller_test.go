@@ -22,9 +22,9 @@ const (
 
 var platformScheme = install.InstallOperatorAPIsPlatform(runtime.NewScheme())
 
-func e2eTestRunTestSetup(run, cleanup bool, testDirPathSegments ...string) *testutils.ComplexEnvironment {
+func e2eTestRunTestSetup(runSuccess, cleanupSuccess bool, testDirPathSegments ...string) *testutils.ComplexEnvironment {
 	registry := runner.NewTestRegistry()
-	registry.RegisterTestCase("fakeTest", &fakeTest{runSuccess: run, cleanupSuccess: cleanup})
+	registry.RegisterTestCase("fakeTest", &fakeTest{runSuccess: runSuccess, cleanupSuccess: cleanupSuccess})
 
 	envBuilder :=
 		testutils.NewComplexEnvironmentBuilder().

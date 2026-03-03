@@ -14,6 +14,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
+	"github.com/openmcp-project/platform-service-test-runner/internal/utils"
+
 	"github.com/openmcp-project/controller-utils/pkg/logging"
 
 	"github.com/openmcp-project/platform-service-test-runner/api/v1alpha1"
@@ -25,7 +27,7 @@ var _ = Describe("CreateProjectTest", func() {
 		scheme            *runtime.Scheme
 		createProjectTest *CreateProjectTest
 		testRun           *v1alpha1.E2ETestRun
-		config            map[string]string
+		config            Config
 	)
 
 	BeforeEach(func() {
@@ -39,7 +41,7 @@ var _ = Describe("CreateProjectTest", func() {
 				Name: "test-run",
 			},
 		}
-		config = map[string]string{
+		config = Config{
 			"identity":           "test-user",
 			"chargingTargetType": "cost-center",
 			"chargingTarget":     "12345",
@@ -133,11 +135,12 @@ var _ = Describe("CreateProjectTest", func() {
 
 			createProjectTest = &CreateProjectTest{OnboardingClient: fakeClient}
 
+			exportsJSON, _ := utils.MarshalToRawMessage(Exports{
+				keyProjectName: "test-run-p",
+			})
 			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
-				Name: createProject,
-				Exports: map[string]string{
-					keyProjectName: "test-run-p",
-				},
+				Name:    createProject,
+				Exports: exportsJSON,
 			})
 
 			err := createProjectTest.Cleanup(testCtx, testRun, nil)
@@ -157,11 +160,12 @@ var _ = Describe("CreateProjectTest", func() {
 
 			createProjectTest = &CreateProjectTest{OnboardingClient: fakeClient}
 
+			exportsJSON, _ := utils.MarshalToRawMessage(Exports{
+				keyProjectName: "non-existent-project",
+			})
 			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
-				Name: createProject,
-				Exports: map[string]string{
-					keyProjectName: "non-existent-project",
-				},
+				Name:    createProject,
+				Exports: exportsJSON,
 			})
 
 			err := createProjectTest.Cleanup(testCtx, testRun, nil)
@@ -181,11 +185,12 @@ var _ = Describe("CreateProjectTest", func() {
 
 			createProjectTest = &CreateProjectTest{OnboardingClient: fakeClient}
 
+			exportsJSON, _ := utils.MarshalToRawMessage(Exports{
+				keyProjectName: "test-run-p",
+			})
 			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
-				Name: createProject,
-				Exports: map[string]string{
-					keyProjectName: "test-run-p",
-				},
+				Name:    createProject,
+				Exports: exportsJSON,
 			})
 
 			err := createProjectTest.Cleanup(testCtx, testRun, nil)

@@ -15,6 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
+	"github.com/openmcp-project/platform-service-test-runner/internal/utils"
+
 	"github.com/openmcp-project/controller-utils/pkg/logging"
 
 	"github.com/openmcp-project/platform-service-test-runner/api/v1alpha1"
@@ -26,7 +28,7 @@ var _ = Describe("CreateMcpTest", func() {
 		scheme        *runtime.Scheme
 		createMcpTest *CreateMcpTest
 		testRun       *v1alpha1.E2ETestRun
-		config        map[string]string
+		config        Config
 	)
 
 	BeforeEach(func() {
@@ -39,18 +41,8 @@ var _ = Describe("CreateMcpTest", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "test-run",
 			},
-			Status: v1alpha1.E2ETestRunStatus{
-				TestCases: []v1alpha1.TestCaseStatus{
-					{
-						Name: createWorkspace,
-						Exports: map[string]string{
-							keyWorkspaceStatusNamespace: "workspace-namespace",
-						},
-					},
-				},
-			},
 		}
-		config = map[string]string{}
+		config = Config{}
 	})
 
 	Describe("Run", func() {
@@ -77,7 +69,13 @@ var _ = Describe("CreateMcpTest", func() {
 				Build()
 
 			createMcpTest = &CreateMcpTest{OnboardingClient: fakeClient}
-
+			exportJSON, _ := utils.MarshalToRawMessage(Exports{
+				keyWorkspaceStatusNamespace: "workspace-namespace",
+			})
+			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
+				Name:    createWorkspace,
+				Exports: exportJSON,
+			})
 			exports, _, err := createMcpTest.Run(testCtx, testRun, config)
 
 			Expect(err).NotTo(HaveOccurred())
@@ -101,7 +99,13 @@ var _ = Describe("CreateMcpTest", func() {
 				Build()
 
 			createMcpTest = &CreateMcpTest{OnboardingClient: fakeClient}
-
+			exportJSON, _ := utils.MarshalToRawMessage(Exports{
+				keyWorkspaceStatusNamespace: "workspace-namespace",
+			})
+			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
+				Name:    createWorkspace,
+				Exports: exportJSON,
+			})
 			_, _, err := createMcpTest.Run(testCtx, testRun, config)
 
 			Expect(err).To(HaveOccurred())
@@ -137,13 +141,13 @@ var _ = Describe("CreateMcpTest", func() {
 				Build()
 
 			createMcpTest = &CreateMcpTest{OnboardingClient: fakeClient}
-
+			exportJSON, _ := utils.MarshalToRawMessage(Exports{
+				keyMcpName:      "test-run-mcpv2",
+				keyMcpNamespace: "workspace-namespace",
+			})
 			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
-				Name: createMcpV2,
-				Exports: map[string]string{
-					keyMcpName:      "test-run-mcpv2",
-					keyMcpNamespace: "workspace-namespace",
-				},
+				Name:    createMcpV2,
+				Exports: exportJSON,
 			})
 
 			err := createMcpTest.Cleanup(testCtx, testRun, nil)
@@ -162,12 +166,13 @@ var _ = Describe("CreateMcpTest", func() {
 				Build()
 
 			createMcpTest = &CreateMcpTest{OnboardingClient: fakeClient}
+			exportJSON, _ := utils.MarshalToRawMessage(Exports{
+				keyMcpName:      "test-run-mcpv2",
+				keyMcpNamespace: "workspace-namespace",
+			})
 			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
-				Name: createMcpV2,
-				Exports: map[string]string{
-					keyMcpName:      "non-existent-mcp",
-					keyMcpNamespace: "workspace-namespace",
-				},
+				Name:    createMcpV2,
+				Exports: exportJSON,
 			})
 
 			err := createMcpTest.Cleanup(testCtx, testRun, nil)
@@ -186,13 +191,13 @@ var _ = Describe("CreateMcpTest", func() {
 				Build()
 
 			createMcpTest = &CreateMcpTest{OnboardingClient: fakeClient}
-
+			exportJSON, _ := utils.MarshalToRawMessage(Exports{
+				keyMcpName:      "test-run-mcpv2",
+				keyMcpNamespace: "workspace-namespace",
+			})
 			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
-				Name: createMcpV2,
-				Exports: map[string]string{
-					keyMcpName:      "test-run-mcpv2",
-					keyMcpNamespace: "workspace-namespace",
-				},
+				Name:    createMcpV2,
+				Exports: exportJSON,
 			})
 
 			err := createMcpTest.Cleanup(testCtx, testRun, nil)

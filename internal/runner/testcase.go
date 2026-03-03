@@ -20,13 +20,17 @@ const (
 	defaultPollTimeout  = 5 * time.Minute
 )
 
+type Config map[string]interface{}
+type Exports map[string]interface{}
+type DebugInfo map[string]interface{}
+
 // TestCase defines the interface for a modular E2E test case. Each test case must implement Run and Cleanup.
 type TestCase interface {
 	// Run executes the test case. It receives the test run and config, and can return exports for other test cases, error details, and debug info.
-	Run(ctx context.Context, run *v1alpha1.E2ETestRun, config map[string]string) (map[string]string, map[string]string, error)
+	Run(ctx context.Context, run *v1alpha1.E2ETestRun, config Config) (Exports, DebugInfo, error)
 
 	// Cleanup reverses the test case actions. Receives config and exports.
-	Cleanup(ctx context.Context, run *v1alpha1.E2ETestRun, config map[string]string) error
+	Cleanup(ctx context.Context, run *v1alpha1.E2ETestRun, config Config) error
 }
 
 // GetStatus retrieves the TestCaseStatus for a given test case name from the list of test case statuses.

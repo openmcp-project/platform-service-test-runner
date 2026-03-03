@@ -51,9 +51,7 @@ spec:
                 items:
                   properties:
                     config:
-                      additionalProperties:
-                        type: string
-                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     name:
                       type: string
                   required:

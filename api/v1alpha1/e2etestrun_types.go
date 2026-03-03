@@ -1,6 +1,8 @@
 package v1alpha1
 
 import (
+	"encoding/json"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -16,11 +18,18 @@ type E2ETestRunSpec struct {
 }
 
 type TestCaseStatus struct {
-	Name      string            `json:"name"`
-	Status    string            `json:"status"`
-	Exports   map[string]string `json:"exports,omitempty"`
-	Error     string            `json:"error,omitempty"`
-	DebugInfo map[string]string `json:"debugInfo,omitempty"`
+	Name   string `json:"name"`
+	Status string `json:"status"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +optional
+	Exports json.RawMessage `json:"exports,omitempty"`
+	Error   string          `json:"error,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +optional
+	DebugInfo  json.RawMessage    `json:"debugInfo,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // E2ETestRunStatus defines the observed state of E2ETestRun.

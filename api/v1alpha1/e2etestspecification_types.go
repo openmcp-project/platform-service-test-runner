@@ -1,6 +1,8 @@
 package v1alpha1
 
 import (
+	"encoding/json"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -8,8 +10,11 @@ import (
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 type TestCase struct {
-	Name   string            `json:"name"`
-	Config map[string]string `json:"config,omitempty"`
+	Name string `json:"name"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+	// +optional
+	Config json.RawMessage `json:"config,omitempty"`
 }
 
 // E2ETestSpecificationSpec defines the desired state of E2ETestSpecification

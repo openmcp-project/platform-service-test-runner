@@ -10,6 +10,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/openmcp-project/platform-service-test-runner/internal/utils"
+
 	testingopenmcpcloudv1alpha1 "github.com/openmcp-project/platform-service-test-runner/api/v1alpha1"
 	"github.com/openmcp-project/platform-service-test-runner/internal/runner"
 )
@@ -57,7 +59,6 @@ func (r *E2ETestRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, fmt.Errorf("test not found in registry, testName %s", testCaseSpec.Name)
 		}
 		existingStatus, found := runner.GetStatus(testCaseSpec.Name, run.Status.TestCases)
-
 		// if already passed -> skip
 		if found && existingStatus.Status == TestStatusPassed {
 			log.Info("Skipping already passed test", "testName", testCaseSpec.Name)
@@ -70,34 +71,17 @@ func (r *E2ETestRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 
 		log.Info("Running test", "testName", testCaseSpec.Name)
-		testExports, debugInfo, err := testCase.Run(ctx, run, map[string]string{"identity": r.identity})
+		testExports, debugInfo, err := testCase.Run(ctx, run, runner.Config{"identity": r.identity})
 		if err != nil {
 			log.Error(err, "error running test", "testName", testCaseSpec.Name)
-			run.Status.TestCases = append(run.Status.TestCases, testingopenmcpcloudv1alpha1.TestCaseStatus{
-				Name:      testCaseSpec.Name,
-				Status:    TestStatusFailed,
-				Exports:   testExports,
-				Error:     err.Error(),
-				DebugInfo: debugInfo,
-			})
-			// Update status and stop running further tests if any test fails.
-			if err := r.platformCluster.Client().Status().Update(ctx, run); err != nil {
-				log.Error(err, "unable to update E2ETestRun status")
-				return ctrl.Result{}, err
+			if statusErr := r.updateStatus(ctx, log, run, testCaseSpec, TestStatusFailed, testExports, debugInfo, err); statusErr != nil {
+				return ctrl.Result{}, statusErr
 			}
-			// Record an event for the failure
 			return ctrl.Result{}, err
 		}
 
-		run.Status.TestCases = append(run.Status.TestCases, testingopenmcpcloudv1alpha1.TestCaseStatus{
-			Name:    testCaseSpec.Name,
-			Status:  TestStatusPassed,
-			Exports: testExports,
-		})
-		// Update status after each test case to have real-time visibility of the progress.
-		if err := r.platformCluster.Client().Status().Update(ctx, run); err != nil {
-			log.Error(err, "unable to update E2ETestRun status")
-			return ctrl.Result{}, err
+		if statusErr := r.updateStatus(ctx, log, run, testCaseSpec, TestStatusPassed, testExports, debugInfo, err); statusErr != nil {
+			return ctrl.Result{}, statusErr
 		}
 	}
 
@@ -109,18 +93,18 @@ func (r *E2ETestRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			log.Error(nil, "test not found in registry during cleanup", "testName", testCase.Name)
 			continue
 		}
-		err := test.Cleanup(ctx, run, nil)
-		if err != nil {
+		log.Info("Running cleanup for test", "testName", testCase.Name)
+		cleanupErr := test.Cleanup(ctx, run, nil)
+		if cleanupErr != nil {
 			existingStatus, _ := runner.GetStatus(testCase.Name, run.Status.TestCases)
 			existingStatus.Status = TestStatusFailed
-			existingStatus.Error = err.Error()
-
-			// Update status after each test case to have real-time visibility of the progress.
-			if err := r.platformCluster.Client().Status().Update(ctx, run); err != nil {
-				log.Error(err, "unable to update E2ETestRun status")
-				return ctrl.Result{}, err
+			existingStatus.Error = cleanupErr.Error()
+			// Update status after cleanup failure
+			if updateErr := r.platformCluster.Client().Status().Update(ctx, run); updateErr != nil {
+				log.Error(updateErr, "unable to update E2ETestRun status")
+				return ctrl.Result{}, updateErr
 			}
-			return ctrl.Result{}, err
+			return ctrl.Result{}, cleanupErr
 		}
 	}
 	return ctrl.Result{}, nil
@@ -132,4 +116,41 @@ func (r *E2ETestRunReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&testingopenmcpcloudv1alpha1.E2ETestRun{}).
 		Named("e2etestrun").
 		Complete(r)
+}
+
+func (r *E2ETestRunReconciler) updateStatus(ctx context.Context, log logging.Logger, run *testingopenmcpcloudv1alpha1.E2ETestRun, testCase testingopenmcpcloudv1alpha1.TestCase, status string, exports runner.Exports, debugIngo runner.DebugInfo, err error) error {
+	tcStatus, statusErr := r.toApiTestCaseStatus(testCase.Name, status, exports, debugIngo, err)
+	if statusErr != nil {
+		log.Error(err, "error creating test case status", "testName", testCase.Name)
+		return statusErr
+	}
+	run.Status.TestCases = append(run.Status.TestCases, tcStatus)
+	// Update status and stop running further tests if any test fails.
+	if updateErr := r.platformCluster.Client().Status().Update(ctx, run); updateErr != nil {
+		log.Error(updateErr, "unable to update E2ETestRun status")
+		return updateErr
+	}
+	return err
+}
+
+// toApiTestCaseStatus is a helper function to create a TestCaseStatus with proper JSON marshaling
+func (r *E2ETestRunReconciler) toApiTestCaseStatus(name, status string, exports, debugInfo map[string]interface{}, err error) (testingopenmcpcloudv1alpha1.TestCaseStatus, error) {
+	expJSON, marshallErr := utils.MarshalToRawMessage(exports)
+	if marshallErr != nil {
+		return testingopenmcpcloudv1alpha1.TestCaseStatus{}, err
+	}
+	diJSON, marshallErr := utils.MarshalToRawMessage(debugInfo)
+	if marshallErr != nil {
+		return testingopenmcpcloudv1alpha1.TestCaseStatus{}, err
+	}
+	testStatus := testingopenmcpcloudv1alpha1.TestCaseStatus{
+		Name:      name,
+		Status:    status,
+		Exports:   expJSON,
+		DebugInfo: diJSON,
+	}
+	if err != nil {
+		testStatus.Error = err.Error()
+	}
+	return testStatus, nil
 }

@@ -14,6 +14,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
+	"github.com/openmcp-project/platform-service-test-runner/internal/utils"
+
 	"github.com/openmcp-project/controller-utils/pkg/logging"
 
 	"github.com/openmcp-project/platform-service-test-runner/api/v1alpha1"
@@ -25,7 +27,7 @@ var _ = Describe("CreateWorkspaceTest", func() {
 		scheme              *runtime.Scheme
 		createWorkspaceTest *CreateWorkspaceTest
 		testRun             *v1alpha1.E2ETestRun
-		config              map[string]string
+		config              Config
 	)
 
 	BeforeEach(func() {
@@ -38,18 +40,8 @@ var _ = Describe("CreateWorkspaceTest", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "test-run",
 			},
-			Status: v1alpha1.E2ETestRunStatus{
-				TestCases: []v1alpha1.TestCaseStatus{
-					{
-						Name: createProject,
-						Exports: map[string]string{
-							keyProjectStatusNamespace: "project-namespace",
-						},
-					},
-				},
-			},
 		}
-		config = map[string]string{
+		config = Config{
 			"identity": "test-user",
 		}
 	})
@@ -78,7 +70,13 @@ var _ = Describe("CreateWorkspaceTest", func() {
 				Build()
 
 			createWorkspaceTest = &CreateWorkspaceTest{OnboardingClient: fakeClient}
-
+			exportsJSON, _ := utils.MarshalToRawMessage(Exports{
+				keyProjectStatusNamespace: "project-namespace",
+			})
+			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
+				Name:    createProject,
+				Exports: exportsJSON,
+			})
 			exports, _, err := createWorkspaceTest.Run(testCtx, testRun, config)
 
 			Expect(err).NotTo(HaveOccurred())
@@ -103,7 +101,13 @@ var _ = Describe("CreateWorkspaceTest", func() {
 				Build()
 
 			createWorkspaceTest = &CreateWorkspaceTest{OnboardingClient: fakeClient}
-
+			exportJSON, _ := utils.MarshalToRawMessage(Exports{
+				keyProjectStatusNamespace: "test-run-ws",
+			})
+			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
+				Name:    createProject,
+				Exports: exportJSON,
+			})
 			_, _, err := createWorkspaceTest.Run(testCtx, testRun, config)
 
 			Expect(err).To(HaveOccurred())
@@ -140,12 +144,14 @@ var _ = Describe("CreateWorkspaceTest", func() {
 
 			createWorkspaceTest = &CreateWorkspaceTest{OnboardingClient: fakeClient}
 
+			exportsJSON, _ := utils.MarshalToRawMessage(Exports{
+				keyWorkspaceName:      "test-run-ws",
+				keyWorkspaceNamespace: "project-namespace",
+			})
+
 			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
-				Name: createWorkspace,
-				Exports: map[string]string{
-					keyWorkspaceName:      "test-run-ws",
-					keyWorkspaceNamespace: "project-namespace",
-				},
+				Name:    createWorkspace,
+				Exports: exportsJSON,
 			})
 
 			err := createWorkspaceTest.Cleanup(testCtx, testRun, nil)
@@ -164,12 +170,14 @@ var _ = Describe("CreateWorkspaceTest", func() {
 				Build()
 
 			createWorkspaceTest = &CreateWorkspaceTest{OnboardingClient: fakeClient}
+
+			exportsJSON, _ := utils.MarshalToRawMessage(Exports{
+				keyWorkspaceName:      "non-existent-ws",
+				keyWorkspaceNamespace: "project-namespace",
+			})
 			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
-				Name: createWorkspace,
-				Exports: map[string]string{
-					keyWorkspaceName:      "non-existent-ws",
-					keyWorkspaceNamespace: "project-namespace",
-				},
+				Name:    createWorkspace,
+				Exports: exportsJSON,
 			})
 
 			err := createWorkspaceTest.Cleanup(testCtx, testRun, nil)
@@ -189,12 +197,13 @@ var _ = Describe("CreateWorkspaceTest", func() {
 
 			createWorkspaceTest = &CreateWorkspaceTest{OnboardingClient: fakeClient}
 
+			exportsJSON, _ := utils.MarshalToRawMessage(Exports{
+				keyWorkspaceName:      "test-run-ws",
+				keyWorkspaceNamespace: "project-namespace",
+			})
 			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
-				Name: createWorkspace,
-				Exports: map[string]string{
-					keyWorkspaceName:      "test-run-ws",
-					keyWorkspaceNamespace: "project-namespace",
-				},
+				Name:    createWorkspace,
+				Exports: exportsJSON,
 			})
 
 			err := createWorkspaceTest.Cleanup(testCtx, testRun, nil)
