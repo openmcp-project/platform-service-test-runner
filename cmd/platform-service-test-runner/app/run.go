@@ -15,6 +15,7 @@ import (
 
 	"github.com/openmcp-project/platform-service-test-runner/internal/controller/e2etestrun"
 	"github.com/openmcp-project/platform-service-test-runner/internal/runner"
+	"github.com/openmcp-project/platform-service-test-runner/internal/version"
 
 	"github.com/openmcp-project/platform-service-test-runner/internal/controller/e2etestspec"
 
@@ -180,6 +181,10 @@ func (o *RunOptions) Run(ctx context.Context) error {
 	setupLog.Info("Environment", "value", o.Environment)
 	setupLog.Info("ProviderName", "value", o.ProviderName)
 
+	// Get version from build-time injected variable or fallback to VERSION file
+	appVersion := version.GetVersion()
+	setupLog.Info("Version", "value", appVersion)
+
 	clusterAccessManager := clusteraccess.NewClusterAccessManager(o.PlatformCluster.Client(), "test-runner.openmcp.cloud", os.Getenv("POD_NAMESPACE"))
 	clusterAccessManager.WithLogger(&setupLog).
 		WithInterval(10 * time.Second).
@@ -188,11 +193,29 @@ func (o *RunOptions) Run(ctx context.Context) error {
 	onboardingCluster, err := clusterAccessManager.CreateAndWaitForCluster(ctx, "onboarding-run", clustersv1alpha1.PURPOSE_ONBOARDING,
 		providerscheme.InstallOperatorAPIsOnboarding(runtime.NewScheme()), []clustersv1alpha1.PermissionsRequest{
 			{
-				// TODO: define the specific permissions needed for the onboarding cluster
 				Rules: []rbacv1.PolicyRule{
+					// openmcp-operator CRDs (ManagedControlPlane, etc.)
 					{
-						APIGroups: []string{"*"},
+						APIGroups: []string{"clusters.openmcp.cloud", "core.openmcp.cloud"},
 						Resources: []string{"*"},
+						Verbs:     []string{"*"},
+					},
+					// project-workspace-operator CRDs
+					{
+						APIGroups: []string{"core.openmcp.cloud"},
+						Resources: []string{"projects", "workspaces"},
+						Verbs:     []string{"*"},
+					},
+					// CRD management (apiextensions)
+					{
+						APIGroups: []string{"apiextensions.k8s.io"},
+						Resources: []string{"customresourcedefinitions"},
+						Verbs:     []string{"*"},
+					},
+					// Core resources (namespaces, secrets, configmaps for cluster access)
+					{
+						APIGroups: []string{""},
+						Resources: []string{"namespaces", "secrets", "configmaps"},
 						Verbs:     []string{"*"},
 					},
 				},
@@ -235,7 +258,7 @@ func (o *RunOptions) Run(ctx context.Context) error {
 	}
 
 	// setup TestSpec reconciler
-	if err := e2etestspec.NewE2ETestSpecificationReconciler(o.PlatformCluster).SetupWithManager(mgr); err != nil {
+	if err := e2etestspec.NewE2ETestSpecificationReconciler(o.PlatformCluster, appVersion).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to add E2ETestSpecificationReconciler to manager: %w", err)
 	}
 

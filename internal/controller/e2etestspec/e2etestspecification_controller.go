@@ -29,11 +29,13 @@ const (
 // E2ETestSpecificationReconciler reconciles a E2ETestSpecification object
 type E2ETestSpecificationReconciler struct {
 	PlatformCluster *clusters.Cluster
+	Version         string
 }
 
-func NewE2ETestSpecificationReconciler(platformCluster *clusters.Cluster) *E2ETestSpecificationReconciler {
+func NewE2ETestSpecificationReconciler(platformCluster *clusters.Cluster, version string) *E2ETestSpecificationReconciler {
 	return &E2ETestSpecificationReconciler{
 		PlatformCluster: platformCluster,
+		Version:         version,
 	}
 }
 
@@ -95,7 +97,7 @@ func (r *E2ETestSpecificationReconciler) Reconcile(ctx context.Context, req ctrl
 		},
 		Spec: testingopenmcpcloudv1alpha1.E2ETestRunSpec{
 			Runner: testingopenmcpcloudv1alpha1.Runner{
-				Version: "v0.0.1", // todo use a real version
+				Version: r.Version,
 				Args:    []string{},
 			},
 			TestCases: testSpec.Spec.TestCases,

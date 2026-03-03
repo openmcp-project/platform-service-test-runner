@@ -26,7 +26,7 @@ func e2eTestSpecTestSetup(testDirPathSegments ...string) *testutils.Environment 
 		WithFakeClient(platformScheme).
 		WithInitObjectPath(testDirPathSegments...).
 		WithReconcilerConstructor(func(c client.Client) reconcile.Reconciler {
-			return NewE2ETestSpecificationReconciler(clusters.NewTestClusterFromClient(platformCluster, c))
+			return NewE2ETestSpecificationReconciler(clusters.NewTestClusterFromClient(platformCluster, c), "v0.0.1-test")
 		}).
 		Build()
 
