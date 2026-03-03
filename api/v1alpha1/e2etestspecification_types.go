@@ -27,7 +27,12 @@ type E2ETestSpecificationSpec struct {
 }
 
 type E2ETestSpecificationStatus struct {
-	LastExecutionTime *metav1.Time `json:"lastExecutionTime"`
+	// +patchMergeKey=type
+	// +patchStrategy=merge
+	// +listType=map
+	// +listMapKey=type
+	// +optional
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true

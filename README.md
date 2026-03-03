@@ -33,43 +33,63 @@ spec:
 The `E2ETestRun` custom resource represents a test execution. 
 It is created by the controller when an `E2ETestSpecification` is created. 
 It contains the status of the test execution, including which test cases have been executed, their results, and any exports they produced for subsequent test cases.
-This resource is not deleted after the test execution, but remains in the cluster for inspection and debugging purposes.
+This resource is not deleted after the test execution, but remains in the cluster for inspection and debugging purposes. 
+Example:
 ```yaml
 apiVersion: test-runner.openmcp.cloud/v1alpha1
 kind: E2ETestRun
 metadata:
-   name: test-run-dmhf6
+  creationTimestamp: "2026-03-03T09:51:45Z"
+  generation: 1
+  labels:
+    test-runner.openmcp.cloud/specification: test-create-p-w-m
+  name: run-1772531505307
+  resourceVersion: "3192"
+  uid: 28f3c316-ade3-49aa-b401-54f1f62f1a42
 spec:
-   runner:
-      version: v0.0.1
-   testcases:
-      - name: createProject
-        config:
-            # test case specific configuration will  be copied from the E2ETestSpecification here.
-            chargingTargetType: "<some_type>"
-            chargingTarget: "<some_target>"
-      - name: createWorkspace
-      - name: createManagedControlPlaneV2
+  runner:
+    version: v0.0.1
+  testcases:
+    - config:
+        chargingTarget: 12345678-1234-1234-1234-123456789012
+        chargingTargetType: btp
+      name: createProject
+    - name: createWorkspace
+    - name: createManagedControlPlaneV2
 status:
-   testCases:
-      - name: createProject
-        # exports are key-value pairs that are returned by the test case and can be used by subsequent test cases. 
-        # They are stored in the status of the E2ETestRun and can be accessed by test cases via the E2ETestRun.
-        exports:
-           project.name: test-run-dmhf6-p
-           project.status.namespace: project-test-run-dmhf6-p
-        # Passed or Failed depending on the result of the test case execution. 
-        status: Passed
-      - name: createWorkspace
-        exports:
-           workspace.name: test-run-dmhf6-ws
-           workspace.namespace: project-test-run-dmhf6-p
-           workspace.status.namespace: project-test-run-dmhf6-p--ws-test-run-dmhf6-ws
-        status: Passed
-      - name: createManagedControlPlaneV2
-        status: Failed
-        error: "Failed to create MCP"
-        debugInfo: "Some debug info"
+  testCases:
+    - conditions:
+        - lastTransitionTime: "2026-03-03T09:52:56Z"
+          message: Test case passed successfully and cleaned up
+          reason: TestPassed
+          status: "True"
+          type: Succeeded
+      exports:
+        project.name: run-1772531505307-p
+        project.status.namespace: project-run-1772531505307-p
+      name: createProject
+    - conditions:
+        - lastTransitionTime: "2026-03-03T09:53:06Z"
+          message: Test case passed successfully and cleaned up
+          reason: TestPassed
+          status: "True"
+          type: Succeeded
+      exports:
+        workspace.name: run-1772531505307-ws
+        workspace.namespace: project-run-1772531505307-p
+        workspace.status.namespace: project-run-1772531505307-p--ws-run-1772531505307-ws
+      name: createWorkspace
+    - conditions:
+        - lastTransitionTime: "2026-03-03T09:53:16Z"
+          message: Test case passed successfully and cleaned up
+          reason: TestPassed
+          status: "True"
+          type: Succeeded
+      exports:
+        mcp.name: run-1772531505307-mcpv2
+        mcp.namespace: project-run-1772531505307-p--ws-run-1772531505307-ws
+      name: createManagedControlPlaneV2
+
 ```
 
 ## Implementing New Test Cases
@@ -80,8 +100,8 @@ All test cases must implement the `TestCase` interface defined in `internal/runn
 
 ```go
 type TestCase interface {
-  Run(ctx context.Context, testRun *v1alpha1.E2ETestRun, config map[string]string) (map[string]string, map[string]string, error)
-  Cleanup(ctx context.Context, testRun *v1alpha1.E2ETestRun, config map[string]string) error
+  Run(ctx context.Context, testRun *v1alpha1.E2ETestRun, config Config) (Exports, DebugInfo, error)
+  Cleanup(ctx context.Context, testRun *v1alpha1.E2ETestRun, config Config) error
 }
 ```
 
@@ -96,17 +116,18 @@ type MyTestCase struct {
     Client client.Client
 }
 
-func (t *MyTestCase) Run(ctx context.Context, testRun *v1alpha1.E2ETestRun, config map[string]string) (map[string]string, map[string]string, error) {
-    // Use testRun to access status and exports from previous test cases.
-	status := util.GetStatus(testRun, "previousTestCaseName")
-	exports := status.Exports
+func (t *MyTestCase) Run(ctx context.Context, testRun *v1alpha1.E2ETestRun, config Config (Exports, DebugInfo, error) {
+    // Use testRun to access status and exports from previous test cases. 
+    status := util.GetStatus(testRun, "previousTestCaseName")
+    exports := status.Exports
     // Use config to access test case specific configuration.
+    // By default, the controller is adding a key `identity` to the config, which is its own username retrieved via authenticationv1.SelfSubjectReview{}
     // Implement the test logic here, e.g. create resources, wait for conditions, etc.
-    // Create own exports to be used by subsequent test cases.
-    return map[string]string{}, map[string]string{}, nil
+    // Create own Exports to be used by subsequent test cases.
+    return Exports{}, DebugInfo{}, nil
 }
 
-func (t *MyTestCase) Cleanup(ctx context.Context, testRun *v1alpha1.E2ETestRun, config map[string]string) error {
+func (t *MyTestCase) Cleanup(ctx context.Context, testRun *v1alpha1.E2ETestRun, config Config) error {
     // Clean up any resources created during Run()
     return nil
 }

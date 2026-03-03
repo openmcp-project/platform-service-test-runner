@@ -94,7 +94,7 @@ var _ = Describe("E2ETestSpecificationReconciler", func() {
 		Expect(env.Client(platformCluster).Get(env.Ctx, client.ObjectKey{Name: "test-run-05", Namespace: "test-run-05-ns"}, testRun)).To(Succeed())
 		Expect(testRun.Status.TestCases).To(HaveLen(1))
 		for _, testCase := range testRun.Status.TestCases {
-			Expect(testCase.Status).To(Equal("Passed"))
+			Expect(isTestCasePassed(testCase)).To(BeTrue())
 		}
 	})
 
@@ -108,11 +108,11 @@ var _ = Describe("E2ETestSpecificationReconciler", func() {
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("some run error"))
 
-		// Verify the test passed
+		// Verify the test failed
 		Expect(env.Client(platformCluster).Get(env.Ctx, client.ObjectKey{Name: "test-run-06", Namespace: "test-run-06-ns"}, testRun)).To(Succeed())
 		Expect(testRun.Status.TestCases).To(HaveLen(1))
 		for _, testCase := range testRun.Status.TestCases {
-			Expect(testCase.Status).To(Equal("Failed"))
+			Expect(isTestCaseFailed(testCase)).To(BeTrue())
 		}
 	})
 
@@ -126,11 +126,11 @@ var _ = Describe("E2ETestSpecificationReconciler", func() {
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("some cleanup error"))
 
-		// Verify the test passed
+		// Verify the test failed due to cleanup error
 		Expect(env.Client(platformCluster).Get(env.Ctx, client.ObjectKey{Name: "test-run-06", Namespace: "test-run-06-ns"}, testRun)).To(Succeed())
 		Expect(testRun.Status.TestCases).To(HaveLen(1))
 		for _, testCase := range testRun.Status.TestCases {
-			Expect(testCase.Status).To(Equal("Failed"))
+			Expect(isTestCaseFailed(testCase)).To(BeTrue())
 		}
 	})
 

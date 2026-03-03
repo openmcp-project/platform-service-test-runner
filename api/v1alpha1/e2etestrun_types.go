@@ -17,19 +17,40 @@ type E2ETestRunSpec struct {
 	TestCases []TestCase `json:"testcases"`
 }
 
+// Condition types for TestCaseStatus
+const (
+	// TestCaseConditionSucceeded indicates whether the test case completed successfully
+	TestCaseConditionSucceeded = "Succeeded"
+)
+
+// Condition reasons for TestCaseStatus
+const (
+	// TestCaseReasonPassed indicates the test case passed all checks
+	TestCaseReasonPassed = "TestPassed"
+	// TestCaseReasonFailed indicates the test case failed
+	TestCaseReasonFailed = "TestFailed"
+	// TestCaseReasonSetupError indicates an error occurred during test setup
+	TestCaseReasonSetupError = "SetupError"
+	// TestCaseReasonCleanupError indicates an error occurred during test cleanup
+	TestCaseReasonCleanupError = "CleanupError"
+)
+
 type TestCaseStatus struct {
-	Name   string `json:"name"`
-	Status string `json:"status"`
+	Name string `json:"name"`
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +optional
 	Exports json.RawMessage `json:"exports,omitempty"`
-	Error   string          `json:"error,omitempty"`
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +optional
-	DebugInfo  json.RawMessage    `json:"debugInfo,omitempty"`
-	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	DebugInfo json.RawMessage `json:"debugInfo,omitempty"`
+	// +patchMergeKey=type
+	// +patchStrategy=merge
+	// +listType=map
+	// +listMapKey=type
+	// +optional
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 }
 
 // E2ETestRunStatus defines the observed state of E2ETestRun.
