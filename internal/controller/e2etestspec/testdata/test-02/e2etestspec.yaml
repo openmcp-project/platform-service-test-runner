@@ -1,0 +1,11 @@
+apiVersion: test-runner.openmcp.cloud/v1alpha1
+kind: E2ETestSpecification
+metadata:
+  name: test-specification-02
+  namespace: test-specification-02-ns
+spec:
+  schedule: "* * * * *"
+  testCases:
+    - name: createProject
+    - name: createWorkspace
+    - name: createManagedControlPlaneV2

@@ -4,11 +4,168 @@
 
 ## About this project
 
-Platform-service-testrunner allows to define and run in-cluster tests on the openMCP clusters
+Platform-service-test-runner allows to define and run in-cluster tests on the openMCP clusters. It provides a framework for creating end-to-end tests that can be executed as Kubernetes resources.
+
+## Architecture
+
+### E2ETestSpecification
+The `E2ETestSpecification` custom resource defines a set of test cases and its configuration. It creates an `E2ETestRun` resource to execute the tests defined in the specification. 
+```yaml
+apiVersion: test-runner.openmcp.cloud/v1alpha1
+kind: E2ETestSpecification
+metadata:
+  name: test-spec-
+spec:
+  # optional cron schedule for periodic test execution. 
+  # Defaults to @daily if not specified.
+  schedule: "0 0 * * *" 
+  testCases:
+    - name: createProject
+      config: 
+        # test case specific configuration can be defined here as key-value pairs
+        chargingTargetType: "<some_type>"
+        chargingTarget: "<some_target>"
+    - name: createWorkspace
+    - name: createManagedControlPlaneV2
+```
+
+### E2ETestRun
+The `E2ETestRun` custom resource represents a test execution. 
+It is created by the controller when an `E2ETestSpecification` is created. 
+It contains the status of the test execution, including which test cases have been executed, their results, and any exports they produced for subsequent test cases.
+This resource is not deleted after the test execution, but remains in the cluster for inspection and debugging purposes. 
+Example:
+```yaml
+apiVersion: test-runner.openmcp.cloud/v1alpha1
+kind: E2ETestRun
+metadata:
+  creationTimestamp: "2026-03-03T09:51:45Z"
+  generation: 1
+  labels:
+    test-runner.openmcp.cloud/specification: test-create-p-w-m
+  name: run-1772531505307
+  resourceVersion: "3192"
+  uid: 28f3c316-ade3-49aa-b401-54f1f62f1a42
+spec:
+  runner:
+    version: v0.0.1
+  testcases:
+    - config:
+        chargingTarget: 12345678-1234-1234-1234-123456789012
+        chargingTargetType: btp
+      name: createProject
+    - name: createWorkspace
+    - name: createManagedControlPlaneV2
+status:
+  testCases:
+    - conditions:
+        - lastTransitionTime: "2026-03-03T09:52:56Z"
+          message: Test case passed successfully and cleaned up
+          reason: TestPassed
+          status: "True"
+          type: Succeeded
+      exports:
+        project.name: run-1772531505307-p
+        project.status.namespace: project-run-1772531505307-p
+      name: createProject
+    - conditions:
+        - lastTransitionTime: "2026-03-03T09:53:06Z"
+          message: Test case passed successfully and cleaned up
+          reason: TestPassed
+          status: "True"
+          type: Succeeded
+      exports:
+        workspace.name: run-1772531505307-ws
+        workspace.namespace: project-run-1772531505307-p
+        workspace.status.namespace: project-run-1772531505307-p--ws-run-1772531505307-ws
+      name: createWorkspace
+    - conditions:
+        - lastTransitionTime: "2026-03-03T09:53:16Z"
+          message: Test case passed successfully and cleaned up
+          reason: TestPassed
+          status: "True"
+          type: Succeeded
+      exports:
+        mcp.name: run-1772531505307-mcpv2
+        mcp.namespace: project-run-1772531505307-p--ws-run-1772531505307-ws
+      name: createManagedControlPlaneV2
+
+```
+
+## Implementing New Test Cases
+
+### TestCase Interface
+
+All test cases must implement the `TestCase` interface defined in `internal/runner/testcase.go`:
+
+```go
+type TestCase interface {
+  Run(ctx context.Context, testRun *v1alpha1.E2ETestRun, config Config) (Exports, DebugInfo, error)
+  Cleanup(ctx context.Context, testRun *v1alpha1.E2ETestRun, config Config) error
+}
+```
+
+- **Run**: Executes the test case. Returns exports (key-value pairs for subsequent tests), error details, and error.
+- **Cleanup**: Performs cleanup after the test (e.g., delete created resources).
+
+### Example Implementation
+
+```go
+type MyTestCase struct {
+    // Add any dependencies or clients needed for the test case here, e.g. Kubernetes client, specific service clients, etc.
+    Client client.Client
+}
+
+func (t *MyTestCase) Run(ctx context.Context, testRun *v1alpha1.E2ETestRun, config Config (Exports, DebugInfo, error) {
+    // Use testRun to access status and exports from previous test cases. 
+    status := util.GetStatus(testRun, "previousTestCaseName")
+    exports := status.Exports
+    // Use config to access test case specific configuration.
+    // By default, the controller is adding a key `identity` to the config, which is its own username retrieved via authenticationv1.SelfSubjectReview{}
+    // Implement the test logic here, e.g. create resources, wait for conditions, etc.
+    // Create own Exports to be used by subsequent test cases.
+    return Exports{}, DebugInfo{}, nil
+}
+
+func (t *MyTestCase) Cleanup(ctx context.Context, testRun *v1alpha1.E2ETestRun, config Config) error {
+    // Clean up any resources created during Run()
+    return nil
+}
+```
+
+## Registering Test Cases
+
+Test cases must be registered with the `TestRegistry` to be discoverable by the controller. Use `NewTestRegistry()` to create a registry instance.
+Currently, test cases are registered in `cmd/plaform-service-test-runner/app/run.go`:
+```go
+testRegistry := runner.NewTestRegistry()
+// register test cases here
+testRegistry.RegisterTestCase("createProject", &runner.CreateProjectTest{OnboardingClient: onboardingCluster.Client()})
+testRegistry.RegisterTestCase("createWorkspace", &runner.CreateWorkspaceTest{OnboardingClient: onboardingCluster.Client()})
+testRegistry.RegisterTestCase("createManagedControlPlaneV2", &runner.CreateMcpTest{OnboardingClient: onboardingCluster.Client()})
+```
 
 ## Requirements and Setup
 
-*Insert a short description what is required to get your project running...*
+In combination with the openMCP Operator, this controller can be deployed via a simple k8s resource:
+
+```yaml
+apiVersion: openmcp.cloud/v1alpha1
+kind: PlatformService
+metadata:
+  name: test-runner
+spec:
+  image: ghcr.io/openmcp-project/images/platform-service-test-runner:v0.0.1
+```
+
+To run it locally, run
+```shell
+go run ./cmd/platform-service-test-runner/main.go init --environment default --provider-name test-runner --kubeconfig path/to/kubeconfig
+```
+to deploy the CRDs that are required for the controller and then
+```shell
+go run ./cmd/platform-service-test-runner/main.go run --environment default --provider-name test-runner --kubeconfig path/to/kubeconfig
+```
 
 ## Support, Feedback, Contributing
 
