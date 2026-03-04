@@ -8,3 +8,5 @@ spec:
     version: "latest"
   testcases:
     - name: fakeTest
+      config:
+        someKey: someValue

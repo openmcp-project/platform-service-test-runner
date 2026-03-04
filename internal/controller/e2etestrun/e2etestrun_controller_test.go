@@ -82,7 +82,7 @@ var _ = Describe("E2ETestSpecificationReconciler", func() {
 		_ = env.ShouldReconcile(e2eTestReconciler, testutils.RequestFromObject(testRun))
 	})
 
-	It("should reconcile and run test case", func() {
+	It("should reconcile and run test case with config", func() {
 		env := e2eTestRunTestSetup(true, true, "testdata", "test-05")
 
 		testRun := &v1alpha1.E2ETestRun{}
@@ -96,6 +96,11 @@ var _ = Describe("E2ETestSpecificationReconciler", func() {
 		for _, testCase := range testRun.Status.TestCases {
 			Expect(isTestCasePassed(testCase)).To(BeTrue())
 		}
+
+		// Verify config was passed correctly
+		tc, _ := env.Reconciler("e2etestrun-reconciler").(*E2ETestRunReconciler).testRegistry.GetTestCase("fakeTest")
+		Expect(tc.(*fakeTest).receivedConfig["identity"]).To(Equal("identity"))
+		Expect(tc.(*fakeTest).receivedConfig["someKey"]).To(Equal("someValue"))
 	})
 
 	It("should reconcile and run with error", func() {
@@ -126,11 +131,14 @@ var _ = Describe("E2ETestSpecificationReconciler", func() {
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("some cleanup error"))
 
-		// Verify the test failed due to cleanup error
+		// Verify the test run passed but cleanup failed
 		Expect(env.Client(platformCluster).Get(env.Ctx, client.ObjectKey{Name: "test-run-06", Namespace: "test-run-06-ns"}, testRun)).To(Succeed())
 		Expect(testRun.Status.TestCases).To(HaveLen(1))
 		for _, testCase := range testRun.Status.TestCases {
-			Expect(isTestCaseFailed(testCase)).To(BeTrue())
+			// Run should have passed
+			Expect(isTestCasePassed(testCase)).To(BeTrue())
+			// But cleanup should have failed
+			Expect(isTestCaseCleanupFailed(testCase)).To(BeTrue())
 		}
 	})
 

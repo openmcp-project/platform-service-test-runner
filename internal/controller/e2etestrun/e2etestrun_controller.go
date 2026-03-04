@@ -2,6 +2,7 @@ package e2etestrun
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -89,8 +90,18 @@ func (r *E2ETestRunReconciler) runTestCases(ctx context.Context, log logging.Log
 			return nil
 		}
 
+		config, err := r.readConfig(testCaseSpec.Config)
+		if err != nil {
+			log.Error(err, "error reading test case config", "testName", testCaseSpec.Name)
+			if statusErr := r.updateStatusAfterRun(ctx, log, run, testCaseSpec, TestStatusFailed, nil, nil, err); statusErr != nil {
+				return statusErr
+			}
+			return err
+		}
+		config["identity"] = r.identity
+
 		log.Info("Running test", "testName", testCaseSpec.Name)
-		testExports, debugInfo, err := testCase.Run(ctx, run, runner.Config{"identity": r.identity})
+		testExports, debugInfo, err := testCase.Run(ctx, run, config)
 		if err != nil {
 			log.Error(err, "error running test", "testName", testCaseSpec.Name)
 			if statusErr := r.updateStatusAfterRun(ctx, log, run, testCaseSpec, TestStatusFailed, testExports, debugInfo, err); statusErr != nil {
@@ -109,18 +120,28 @@ func (r *E2ETestRunReconciler) runTestCases(ctx context.Context, log logging.Log
 // cleanupTestCases cleans up test resources in reverse order after all tests have run
 func (r *E2ETestRunReconciler) cleanupTestCases(ctx context.Context, log logging.Logger, run *testingopenmcpcloudv1alpha1.E2ETestRun) error {
 	for i := len(run.Spec.TestCases) - 1; i >= 0; i-- {
-		testCase := run.Spec.TestCases[i]
-		test, found := r.testRegistry.GetTestCase(testCase.Name)
+		testCaseSpec := run.Spec.TestCases[i]
+		test, found := r.testRegistry.GetTestCase(testCaseSpec.Name)
 		if !found {
-			log.Error(nil, "test not found in registry during cleanup", "testName", testCase.Name)
+			log.Error(nil, "test not found in registry during cleanup", "testName", testCaseSpec.Name)
 			continue
 		}
 
-		log.Info("Running cleanup for test", "testName", testCase.Name)
-		cleanupErr := test.Cleanup(ctx, run, nil)
+		config, err := r.readConfig(testCaseSpec.Config)
+		if err != nil {
+			log.Error(err, "error reading test case config", "testName", testCaseSpec.Name)
+			if statusErr := r.updateStatusAfterRun(ctx, log, run, testCaseSpec, TestStatusFailed, nil, nil, err); statusErr != nil {
+				return statusErr
+			}
+			return err
+		}
+		config["identity"] = r.identity
+
+		log.Info("Running cleanup for test", "testName", testCaseSpec.Name)
+		cleanupErr := test.Cleanup(ctx, run, config)
 
 		// Update test case status condition based on cleanup result
-		if err := r.updateStatusAfterCleanup(ctx, log, run, testCase.Name, cleanupErr); err != nil {
+		if err := r.updateStatusAfterCleanup(ctx, log, run, testCaseSpec.Name, cleanupErr); err != nil {
 			return err
 		}
 
@@ -142,22 +163,22 @@ func (r *E2ETestRunReconciler) updateStatusAfterCleanup(ctx context.Context, log
 		return statusErr
 	}
 	if cleanupErr != nil {
-		// Update condition with cleanup error
+		// Update cleanup condition with error
 		setTestCaseCondition(
 			status,
-			testingopenmcpcloudv1alpha1.TestCaseConditionSucceeded,
+			testingopenmcpcloudv1alpha1.TestCaseConditionCleanupCompleted,
 			metav1.ConditionFalse,
 			testingopenmcpcloudv1alpha1.TestCaseReasonCleanupError,
 			cleanupErr.Error(),
 		)
 	} else {
-		// Update condition to reflect successful cleanup
+		// Update cleanup condition to reflect successful cleanup
 		setTestCaseCondition(
 			status,
-			testingopenmcpcloudv1alpha1.TestCaseConditionSucceeded,
+			testingopenmcpcloudv1alpha1.TestCaseConditionCleanupCompleted,
 			metav1.ConditionTrue,
-			testingopenmcpcloudv1alpha1.TestCaseReasonPassed,
-			"Test case passed successfully and cleaned up",
+			testingopenmcpcloudv1alpha1.TestCaseReasonCleanupSuccess,
+			"Test case cleanup completed successfully",
 		)
 	}
 
@@ -204,19 +225,19 @@ func (r *E2ETestRunReconciler) toApiTestCaseStatus(name, status string, exports,
 	if status == TestStatusPassed {
 		condStatus = metav1.ConditionTrue
 		reason = testingopenmcpcloudv1alpha1.TestCaseReasonPassed
-		message = "Test case passed successfully"
+		message = "Test case run completed successfully"
 	} else {
 		condStatus = metav1.ConditionFalse
 		reason = testingopenmcpcloudv1alpha1.TestCaseReasonFailed
 		if err != nil {
 			message = err.Error()
 		} else {
-			message = "Test case failed"
+			message = "Test case run failed"
 		}
 	}
 
 	conds, _ := conditions.ConditionUpdater(nil, false).
-		UpdateCondition(testingopenmcpcloudv1alpha1.TestCaseConditionSucceeded, condStatus, 0, reason, message).
+		UpdateCondition(testingopenmcpcloudv1alpha1.TestCaseConditionRunCompleted, condStatus, 0, reason, message).
 		Conditions()
 
 	testStatus := testingopenmcpcloudv1alpha1.TestCaseStatus{
@@ -228,15 +249,21 @@ func (r *E2ETestRunReconciler) toApiTestCaseStatus(name, status string, exports,
 	return testStatus, nil
 }
 
-// isTestCasePassed checks if a test case has passed by examining its conditions
+// isTestCasePassed checks if a test case run has passed by examining its RunCompleted condition
 func isTestCasePassed(status testingopenmcpcloudv1alpha1.TestCaseStatus) bool {
-	cond := conditions.GetCondition(status.Conditions, testingopenmcpcloudv1alpha1.TestCaseConditionSucceeded)
+	cond := conditions.GetCondition(status.Conditions, testingopenmcpcloudv1alpha1.TestCaseConditionRunCompleted)
 	return cond != nil && cond.Status == metav1.ConditionTrue
 }
 
-// isTestCaseFailed checks if a test case has failed by examining its conditions
+// isTestCaseFailed checks if a test case run has failed by examining its RunCompleted condition
 func isTestCaseFailed(status testingopenmcpcloudv1alpha1.TestCaseStatus) bool {
-	cond := conditions.GetCondition(status.Conditions, testingopenmcpcloudv1alpha1.TestCaseConditionSucceeded)
+	cond := conditions.GetCondition(status.Conditions, testingopenmcpcloudv1alpha1.TestCaseConditionRunCompleted)
+	return cond != nil && cond.Status == metav1.ConditionFalse
+}
+
+// isTestCaseCleanupFailed checks if a test case cleanup has failed by examining its CleanupCompleted condition
+func isTestCaseCleanupFailed(status testingopenmcpcloudv1alpha1.TestCaseStatus) bool {
+	cond := conditions.GetCondition(status.Conditions, testingopenmcpcloudv1alpha1.TestCaseConditionCleanupCompleted)
 	return cond != nil && cond.Status == metav1.ConditionFalse
 }
 
@@ -254,4 +281,16 @@ func (r *E2ETestRunReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&testingopenmcpcloudv1alpha1.E2ETestRun{}).
 		Named("e2etestrun").
 		Complete(r)
+}
+
+// readConfig is a helper function to unmarshal the test case config from JSON RawMessage to runner.Config struct
+func (r *E2ETestRunReconciler) readConfig(config json.RawMessage) (runner.Config, error) {
+	cfg := runner.Config{}
+	if config == nil {
+		return cfg, nil
+	}
+	if err := json.Unmarshal(config, &cfg); err != nil {
+		return nil, fmt.Errorf("error unmarshalling test case config: %w", err)
+	}
+	return cfg, nil
 }

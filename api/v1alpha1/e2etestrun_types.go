@@ -19,8 +19,10 @@ type E2ETestRunSpec struct {
 
 // Condition types for TestCaseStatus
 const (
-	// TestCaseConditionSucceeded indicates whether the test case completed successfully
-	TestCaseConditionSucceeded = "Succeeded"
+	// TestCaseConditionRunCompleted indicates whether the test case run phase completed
+	TestCaseConditionRunCompleted = "RunCompleted"
+	// TestCaseConditionCleanupCompleted indicates whether the test case cleanup phase completed
+	TestCaseConditionCleanupCompleted = "CleanupCompleted"
 )
 
 // Condition reasons for TestCaseStatus
@@ -29,10 +31,10 @@ const (
 	TestCaseReasonPassed = "TestPassed"
 	// TestCaseReasonFailed indicates the test case failed
 	TestCaseReasonFailed = "TestFailed"
-	// TestCaseReasonSetupError indicates an error occurred during test setup
-	TestCaseReasonSetupError = "SetupError"
 	// TestCaseReasonCleanupError indicates an error occurred during test cleanup
 	TestCaseReasonCleanupError = "CleanupError"
+	// TestCaseReasonCleanupSuccess indicates the cleanup completed successfully
+	TestCaseReasonCleanupSuccess = "CleanupSuccess"
 )
 
 type TestCaseStatus struct {
