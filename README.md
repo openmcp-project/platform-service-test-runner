@@ -14,24 +14,38 @@ The `E2ETestSpecification` custom resource defines a set of test cases and its c
 apiVersion: test-runner.openmcp.cloud/v1alpha1
 kind: E2ETestSpecification
 metadata:
-  name: test-spec-
+  name: test-spec
 spec:
   # optional cron schedule for periodic test execution. 
   # Defaults to @daily if not specified.
   schedule: "0 0 * * *" 
   testCases:
     - name: createProject
-      config: 
-        # test case specific configuration can be defined here as key-value pairs
-        chargingTargetType: "<some_type>"
-        chargingTarget: "<some_target>"
+      config: {}
     - name: createWorkspace
+      config: {}
     - name: createManagedControlPlaneV2
+      config: {}
 ```
+
+#### Test case configuration
+Each test case in the `E2ETestSpecification` can have its own configuration, which is passed to the test case implementation when it is executed.
+
+Currently, the following configuration keys exist:
+
+| Key | Used by | Description |
+| --- | --- | --- |
+| `chargingTarget` | `createProject` | Specifies the charging target for the project. Value should be a UUID. |
+| `chargingTargetType` | `createProject` | Specifies the type of the charging target for the project. |
+| `identity` | All test cases | Automatically added by the controller, contains the username retrieved via `authenticationv1.SelfSubjectReview{}`. |
+| `pollInterval` | All test cases | Polling interval for waiting for conditions. Duration string (e.g., "30s"). Defaults to 10 seconds if not specified. |
+| `pollTimeout` | All test cases | Polling timeout for waiting for conditions. Duration string (e.g., "5m"). Defaults to 5 minutes if not specified. |
+
+
 
 ### E2ETestRun
 The `E2ETestRun` custom resource represents a test execution. 
-It is created by the controller when an `E2ETestSpecification` is created. 
+It is created by the `e2etestspecification_controller.go` controller when an `E2ETestSpecification` is created and a new test run needs to be started (based on the schedule).
 It contains the status of the test execution, including which test cases have been executed, their results, and any exports they produced for subsequent test cases.
 This resource is not deleted after the test execution, but remains in the cluster for inspection and debugging purposes. 
 Example:
@@ -39,57 +53,71 @@ Example:
 apiVersion: test-runner.openmcp.cloud/v1alpha1
 kind: E2ETestRun
 metadata:
-  creationTimestamp: "2026-03-03T09:51:45Z"
-  generation: 1
   labels:
     test-runner.openmcp.cloud/specification: test-create-p-w-m
-  name: run-1772531505307
-  resourceVersion: "3192"
-  uid: 28f3c316-ade3-49aa-b401-54f1f62f1a42
+  name: run-1772628360009
 spec:
   runner:
-    version: v0.0.1
+    version: 0.0.1-dev
   testcases:
     - config:
         chargingTarget: 12345678-1234-1234-1234-123456789012
         chargingTargetType: btp
       name: createProject
     - name: createWorkspace
-    - name: createManagedControlPlaneV2
+    - config:
+        pollInterval: 20s
+        pollTimeout: 15m
+      name: createManagedControlPlaneV2
+      
 status:
   testCases:
     - conditions:
-        - lastTransitionTime: "2026-03-03T09:52:56Z"
-          message: Test case passed successfully and cleaned up
+        - lastTransitionTime: "2026-03-04T13:01:04Z"
+          message: Test case cleanup completed successfully
+          reason: CleanupSuccess
+          status: "True"
+          type: CleanupCompleted
+        - lastTransitionTime: "2026-03-04T12:59:54Z"
+          message: Test case run completed successfully
           reason: TestPassed
           status: "True"
-          type: Succeeded
+          type: RunCompleted
       exports:
-        project.name: run-1772531505307-p
-        project.status.namespace: project-run-1772531505307-p
+        project.name: run-1772628360009-p
+        project.status.namespace: project-run-1772628360009-p
       name: createProject
     - conditions:
-        - lastTransitionTime: "2026-03-03T09:53:06Z"
-          message: Test case passed successfully and cleaned up
+        - lastTransitionTime: "2026-03-04T13:00:54Z"
+          message: Test case cleanup completed successfully
+          reason: CleanupSuccess
+          status: "True"
+          type: CleanupCompleted
+        - lastTransitionTime: "2026-03-04T13:00:04Z"
+          message: Test case run completed successfully
           reason: TestPassed
           status: "True"
-          type: Succeeded
+          type: RunCompleted
       exports:
-        workspace.name: run-1772531505307-ws
-        workspace.namespace: project-run-1772531505307-p
-        workspace.status.namespace: project-run-1772531505307-p--ws-run-1772531505307-ws
+        workspace.name: run-1772628360009-ws
+        workspace.namespace: project-run-1772628360009-p
+        workspace.status.namespace: project-run-1772628360009-p--ws-run-1772628360009-ws
       name: createWorkspace
     - conditions:
-        - lastTransitionTime: "2026-03-03T09:53:16Z"
-          message: Test case passed successfully and cleaned up
+        - lastTransitionTime: "2026-03-04T13:00:44Z"
+          message: Test case cleanup completed successfully
+          reason: CleanupSuccess
+          status: "True"
+          type: CleanupCompleted
+        - lastTransitionTime: "2026-03-04T13:00:14Z"
+          message: Test case run completed successfully
           reason: TestPassed
           status: "True"
-          type: Succeeded
+          type: RunCompleted
       exports:
-        mcp.name: run-1772531505307-mcpv2
-        mcp.namespace: project-run-1772531505307-p--ws-run-1772531505307-ws
+        mcp.name: run-1772628360009-mcpv2
+        mcp.namespace: project-run-1772628360009-p--ws-run-1772628360009-ws
       name: createManagedControlPlaneV2
-
 ```
 
 ## Implementing New Test Cases

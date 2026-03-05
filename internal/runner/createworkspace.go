@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/openmcp-project/controller-utils/pkg/logging"
 	pwv1alpha1 "github.com/openmcp-project/project-workspace-operator/api/core/v1alpha1"
@@ -33,7 +32,7 @@ type CreateWorkspaceTest struct {
 // It returns the workspace name, namespace, and status namespace as exports for other test cases to use.
 func (c *CreateWorkspaceTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, config Config) (Exports, DebugInfo, error) {
 	log := logging.FromContextOrPanic(ctx).WithName(createWorkspace)
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, defaultContextTimeout)
 	defer cancel()
 
 	// Workspace creation depends on project creation, so we need to get the project namespace from the previous test case's exports
@@ -89,7 +88,9 @@ func (c *CreateWorkspaceTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun,
 	}
 	log.Debug("Workspace created", keyWorkspaceName, workspace.Name, keyWorkspaceNamespace, workspace.Namespace)
 
-	workspace, err := WaitForReadyAndGet(ctx, c.OnboardingClient, wsName, wsNamespace, workspace, defaultPollInterval, defaultPollTimeout, IsWorkspaceReady)
+	pollInterval := GetPollIntervalOrDefault(config)
+	pollTimeout := GetPollTimeoutOrDefault(config)
+	workspace, err := WaitForReadyAndGet(ctx, c.OnboardingClient, wsName, wsNamespace, workspace, pollInterval, pollTimeout, IsWorkspaceReady)
 	if err != nil {
 		return nil, nil, fmt.Errorf("polling workspace after creation failed: %w", err)
 	}
@@ -103,9 +104,9 @@ func (c *CreateWorkspaceTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun,
 }
 
 // Cleanup deletes the workspace created in the Run method, identified via own export. It waits until the workspace is fully deleted before returning.
-func (c *CreateWorkspaceTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRun, _ Config) error {
+func (c *CreateWorkspaceTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRun, config Config) error {
 	log := logging.FromContextOrPanic(ctx).WithName(createWorkspace)
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, defaultContextTimeout)
 	defer cancel()
 
 	ownStatus, found := GetStatus(createWorkspace, run.Status.TestCases)
@@ -142,8 +143,9 @@ func (c *CreateWorkspaceTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETest
 		return nil // Already gone
 	}
 
-	// Wait for deletion to complete
-	err := WaitForDeletion(ctx, c.OnboardingClient, wsName, wsNamespace, &pwv1alpha1.Workspace{}, defaultPollInterval, defaultPollTimeout)
+	pollInterval := GetPollIntervalOrDefault(config)
+	pollTimeout := GetPollTimeoutOrDefault(config)
+	err := WaitForDeletion(ctx, c.OnboardingClient, wsName, wsNamespace, &pwv1alpha1.Workspace{}, pollInterval, pollTimeout)
 	if err != nil {
 		return fmt.Errorf("polling after workspace deletion failed: %w", err)
 	}

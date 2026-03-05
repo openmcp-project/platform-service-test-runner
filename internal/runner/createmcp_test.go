@@ -42,7 +42,9 @@ var _ = Describe("CreateMcpTest", func() {
 				Name: "test-run",
 			},
 		}
-		config = Config{}
+		config = Config{
+			"pollTimeout": "1m",
+		}
 	})
 
 	Describe("Run", func() {
