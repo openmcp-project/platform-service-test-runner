@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/openmcp-project/controller-utils/pkg/logging"
 	pwv1alpha1 "github.com/openmcp-project/project-workspace-operator/api/core/v1alpha1"
@@ -37,7 +36,7 @@ type CreateProjectTest struct {
 // It reads chargingTarget and chargingTargetType from the config to set labels for cost allocation, if provided.
 func (c *CreateProjectTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, config Config) (Exports, DebugInfo, error) {
 	log := logging.FromContextOrPanic(ctx).WithName(createProject)
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, defaultContextTimeout)
 	defer cancel()
 
 	projectName := fmt.Sprintf("%s-p", run.Name)
@@ -82,7 +81,9 @@ func (c *CreateProjectTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, c
 
 	log.Debug("Project created", "name", project.Name)
 
-	project, err := WaitForReadyAndGet(ctx, c.OnboardingClient, projectName, "", project, defaultPollInterval, defaultPollTimeout, IsProjectReady)
+	pollInterval := GetPollIntervalOrDefault(config)
+	pollTimeout := GetPollTimeoutOrDefault(config)
+	project, err := WaitForReadyAndGet(ctx, c.OnboardingClient, projectName, "", project, pollInterval, pollTimeout, IsProjectReady)
 	if err != nil {
 		return nil, nil, fmt.Errorf("polling after project creation failed: %w", err)
 	}
@@ -96,9 +97,9 @@ func (c *CreateProjectTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, c
 }
 
 // Cleanup deletes the project created in the Run method, identified via own export. It waits until the project is fully deleted before returning.
-func (c *CreateProjectTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRun, _ Config) error {
+func (c *CreateProjectTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRun, config Config) error {
 	log := logging.FromContextOrPanic(ctx).WithName(createProject)
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, defaultContextTimeout)
 	defer cancel()
 
 	ownStatus, found := GetStatus(createProject, run.Status.TestCases)
@@ -130,8 +131,9 @@ func (c *CreateProjectTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRu
 		return nil // Already gone
 	}
 
-	// Wait for deletion to complete
-	err := WaitForDeletion(ctx, c.OnboardingClient, projectName, "", &pwv1alpha1.Project{}, defaultPollInterval, defaultPollTimeout)
+	pollInterval := GetPollIntervalOrDefault(config)
+	pollTimeout := GetPollTimeoutOrDefault(config)
+	err := WaitForDeletion(ctx, c.OnboardingClient, projectName, "", &pwv1alpha1.Project{}, pollInterval, pollTimeout)
 	if err != nil {
 		return fmt.Errorf("polling after project deletion failed: %w", err)
 	}

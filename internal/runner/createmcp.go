@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/openmcp-project/controller-utils/pkg/logging"
 	"github.com/openmcp-project/openmcp-operator/api/common"
@@ -30,9 +29,9 @@ type CreateMcpTest struct {
 
 // Run creates a MCPv2 in the workspace created by the createWorkspace test case, with the given configuration, and waits until it's ready.
 // It returns the MCPv2 name and namespace as exports for other test cases to use.
-func (c *CreateMcpTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, _ Config) (Exports, DebugInfo, error) {
+func (c *CreateMcpTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, config Config) (Exports, DebugInfo, error) {
 	log := logging.FromContextOrPanic(ctx).WithName(createMcpV2)
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, defaultContextTimeout)
 	defer cancel()
 
 	// mcp creation depends on workspace creation, so we need to get the workspace namespace from the previous test case's exports
@@ -67,7 +66,10 @@ func (c *CreateMcpTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, _ Con
 	}
 	log.Info("MCPv2 created", keyMcpName, mcp.Name, keyMcpNamespace, mcp.Namespace)
 
-	mcp, err := WaitForReadyAndGet(ctx, c.OnboardingClient, mcpName, mcpNamespace, mcp, defaultPollInterval, defaultPollTimeout, IsMcpReady)
+	pollInterval := GetPollIntervalOrDefault(config)
+	pollTimeout := GetPollTimeoutOrDefault(config)
+
+	mcp, err := WaitForReadyAndGet(ctx, c.OnboardingClient, mcpName, mcpNamespace, mcp, pollInterval, pollTimeout, IsMcpReady)
 	if err != nil {
 		return nil, nil, fmt.Errorf("polling MCPv2 after creation: %w", err)
 	}
@@ -80,9 +82,9 @@ func (c *CreateMcpTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, _ Con
 }
 
 // Cleanup deletes the MCPv2 created in the Run method, identified via own export. It waits until the MCPv2 is fully deleted before returning.
-func (c *CreateMcpTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRun, _ Config) error {
+func (c *CreateMcpTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRun, config Config) error {
 	log := logging.FromContextOrPanic(ctx).WithName(createMcpV2)
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, defaultContextTimeout)
 	defer cancel()
 
 	ownStatus, found := GetStatus(createMcpV2, run.Status.TestCases)
@@ -121,8 +123,9 @@ func (c *CreateMcpTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRun, _
 		return nil
 	}
 
-	// Wait for deletion to complete
-	err := WaitForDeletion(ctx, c.OnboardingClient, mcpName, mcpNs, &omcpv2alpha1.ManagedControlPlaneV2{}, defaultPollInterval, defaultPollTimeout)
+	pollInterval := GetPollIntervalOrDefault(config)
+	pollTimeout := GetPollTimeoutOrDefault(config)
+	err := WaitForDeletion(ctx, c.OnboardingClient, mcpName, mcpNs, &omcpv2alpha1.ManagedControlPlaneV2{}, pollInterval, pollTimeout)
 	if err != nil {
 		return fmt.Errorf("polling MCPv2 after deletion failed: %w", err)
 	}

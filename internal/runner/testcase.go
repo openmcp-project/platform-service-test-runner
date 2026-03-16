@@ -9,6 +9,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/openmcp-project/platform-service-test-runner/internal/utils"
+
 	"github.com/openmcp-project/platform-service-test-runner/api/v1alpha1"
 )
 
@@ -16,8 +18,12 @@ const (
 	labelTestCase  = "test-case"
 	configIdentity = "identity"
 
-	defaultPollInterval = 10 * time.Second
-	defaultPollTimeout  = 5 * time.Minute
+	configPollInterval = "pollInterval"
+	configPollTimeout  = "pollTimeout"
+
+	defaultContextTimeout = 30 * time.Minute
+	defaultPollInterval   = 10 * time.Second
+	defaultPollTimeout    = 10 * time.Minute
 )
 
 type Config map[string]interface{}
@@ -87,4 +93,26 @@ func WaitForDeletion[T client.Object](
 		}
 		return false, nil // Still exists, keep polling
 	})
+}
+
+func GetPollIntervalOrDefault(config Config) time.Duration {
+	pollInterval := defaultPollInterval
+	pollIntervalConfig := utils.GetAsString(config, configPollInterval)
+	if pollIntervalConfig != "" {
+		if parsed, err := time.ParseDuration(pollIntervalConfig); err == nil {
+			pollInterval = parsed
+		}
+	}
+	return pollInterval
+}
+
+func GetPollTimeoutOrDefault(config Config) time.Duration {
+	pollTimeout := defaultPollTimeout
+	pollTimeoutConfig := utils.GetAsString(config, configPollTimeout)
+	if pollTimeoutConfig != "" {
+		if parsed, err := time.ParseDuration(pollTimeoutConfig); err == nil {
+			pollTimeout = parsed
+		}
+	}
+	return pollTimeout
 }
