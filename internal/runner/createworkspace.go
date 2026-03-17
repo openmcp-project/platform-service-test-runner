@@ -84,9 +84,13 @@ func (c *CreateWorkspaceTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun,
 	}
 
 	if err := c.OnboardingClient.Create(ctx, workspace); err != nil {
-		return nil, nil, fmt.Errorf("workspace creation failed: %w", err)
+		if !errors.IsAlreadyExists(err) {
+			return nil, nil, fmt.Errorf("workspace creation failed: %w", err)
+		}
+		log.Debug("Workspace already exists, proceeding with existing resource", "name", workspace.Name, "namespace", workspace.Namespace)
+	} else {
+		log.Debug("Workspace created", keyWorkspaceName, workspace.Name, keyWorkspaceNamespace, workspace.Namespace)
 	}
-	log.Debug("Workspace created", keyWorkspaceName, workspace.Name, keyWorkspaceNamespace, workspace.Namespace)
 
 	pollInterval := GetPollIntervalOrDefault(config)
 	pollTimeout := GetPollTimeoutOrDefault(config)

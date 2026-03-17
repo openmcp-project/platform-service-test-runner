@@ -86,6 +86,33 @@ var _ = Describe("CreateProjectTest", func() {
 			Expect(project.Labels["test-case"]).To(Equal(createProject))
 		})
 
+		It("should poll state if project already exists and return exports", func() {
+			fakeClient := fake.NewClientBuilder().
+				WithScheme(scheme).
+				WithInterceptorFuncs(interceptor.Funcs{
+					Create: func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+						return errors.NewAlreadyExists(schema.GroupResource{Group: "core.openmcp.cloud", Resource: "projects"}, obj.GetName())
+					},
+					Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+						// Simulate controller setting status.namespace to indicate project is ready
+						if p, ok := obj.(*pwv1alpha1.Project); ok {
+							p.Status.Namespace = "project-namespace"
+							return nil
+						}
+						return c.Get(ctx, key, obj, opts...)
+					},
+				}).
+				Build()
+
+			createProjectTest = &CreateProjectTest{OnboardingClient: fakeClient}
+
+			exports, _, err := createProjectTest.Run(testCtx, testRun, config)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(exports[keyProjectName]).To(Equal("test-run-p"))
+			Expect(exports[keyProjectStatusNamespace]).To(Equal("project-namespace"))
+		})
+
 		It("should return error if project creation fails", func() {
 			fakeClient := fake.NewClientBuilder().
 				WithScheme(scheme).

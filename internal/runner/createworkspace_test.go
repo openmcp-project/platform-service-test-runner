@@ -90,6 +90,40 @@ var _ = Describe("CreateWorkspaceTest", func() {
 			Expect(workspace.Labels["test-case"]).To(Equal(createWorkspace))
 		})
 
+		It("should poll state if workspace already exists and return exports", func() {
+			fakeClient := fake.NewClientBuilder().
+				WithScheme(scheme).
+				WithInterceptorFuncs(interceptor.Funcs{
+					Create: func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+						return errors.NewAlreadyExists(schema.GroupResource{Group: "core.openmcp.cloud", Resource: "workspaces"}, obj.GetName())
+					},
+					Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+						// Simulate controller setting status.namespace to Ready if workspace already exists
+						if ws, ok := obj.(*pwv1alpha1.Workspace); ok {
+							ws.Status.Namespace = "workspace-namespace"
+							return nil
+						}
+						return c.Get(ctx, key, obj, opts...)
+					},
+				}).
+				Build()
+
+			createWorkspaceTest = &CreateWorkspaceTest{OnboardingClient: fakeClient}
+			exportsJSON, _ := utils.MarshalToRawMessage(Exports{
+				keyProjectStatusNamespace: "project-namespace",
+			})
+			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
+				Name:    createProject,
+				Exports: exportsJSON,
+			})
+			exports, _, err := createWorkspaceTest.Run(testCtx, testRun, config)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(exports[keyWorkspaceName]).To(Equal("test-run-ws"))
+			Expect(exports[keyWorkspaceNamespace]).To(Equal("project-namespace"))
+			Expect(exports[keyWorkspaceStatusNamespace]).To(Equal("workspace-namespace"))
+		})
+
 		It("should return error if workspace creation fails", func() {
 			fakeClient := fake.NewClientBuilder().
 				WithScheme(scheme).

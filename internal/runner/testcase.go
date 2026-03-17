@@ -18,10 +18,11 @@ const (
 	labelTestCase  = "test-case"
 	configIdentity = "identity"
 
-	configPollInterval = "pollInterval"
-	configPollTimeout  = "pollTimeout"
+	configContextTimeout = "contextTimeout"
+	configPollInterval   = "pollInterval"
+	configPollTimeout    = "pollTimeout"
 
-	defaultContextTimeout = 30 * time.Minute
+	defaultContextTimeout = 60 * time.Minute
 	defaultPollInterval   = 10 * time.Second
 	defaultPollTimeout    = 10 * time.Minute
 )
@@ -93,6 +94,17 @@ func WaitForDeletion[T client.Object](
 		}
 		return false, nil // Still exists, keep polling
 	})
+}
+
+func GetContextTimeoutOrDefault(config Config) time.Duration {
+	contextTimeout := defaultContextTimeout
+	contextTimeoutConfig := utils.GetAsString(config, configContextTimeout)
+	if contextTimeoutConfig != "" {
+		if parsed, err := time.ParseDuration(contextTimeoutConfig); err == nil {
+			contextTimeout = parsed
+		}
+	}
+	return contextTimeout
 }
 
 func GetPollIntervalOrDefault(config Config) time.Duration {
