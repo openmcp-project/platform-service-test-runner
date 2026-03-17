@@ -90,7 +90,7 @@ func (r *E2ETestRunReconciler) runTestCases(ctx context.Context, log logging.Log
 			return nil
 		}
 
-		config, err := r.readConfig(testCaseSpec.Config)
+		config, err := readConfig(testCaseSpec.Config)
 		if err != nil {
 			log.Error(err, "error reading test case config", "testName", testCaseSpec.Name)
 			if statusErr := r.updateStatusAfterRun(ctx, log, run, testCaseSpec, TestStatusFailed, nil, nil, err); statusErr != nil {
@@ -127,7 +127,7 @@ func (r *E2ETestRunReconciler) cleanupTestCases(ctx context.Context, log logging
 			continue
 		}
 
-		config, err := r.readConfig(testCaseSpec.Config)
+		config, err := readConfig(testCaseSpec.Config)
 		if err != nil {
 			log.Error(err, "error reading test case config", "testName", testCaseSpec.Name)
 			if statusErr := r.updateStatusAfterRun(ctx, log, run, testCaseSpec, TestStatusFailed, nil, nil, err); statusErr != nil {
@@ -159,7 +159,7 @@ func (r *E2ETestRunReconciler) updateStatusAfterCleanup(ctx context.Context, log
 	status, found := runner.GetStatus(testCaseName, run.Status.TestCases)
 	if !found {
 		statusErr := errors.New("unable to find test case status for cleanup update")
-		log.Error(statusErr, "testName", testCaseName)
+		log.Error(statusErr, "test case status not found during cleanup update", "testName", testCaseName)
 		return statusErr
 	}
 	if cleanupErr != nil {
@@ -193,7 +193,15 @@ func (r *E2ETestRunReconciler) updateStatusAfterCleanup(ctx context.Context, log
 
 // updateStatusAfterRun updates the test case status after running a test case, including exports, debug info, and error if any.
 // It also updates the overall test run status and stops further execution if a test fails.
-func (r *E2ETestRunReconciler) updateStatusAfterRun(ctx context.Context, log logging.Logger, run *testingopenmcpcloudv1alpha1.E2ETestRun, testCase testingopenmcpcloudv1alpha1.TestCase, status string, exports runner.Exports, debugIngo runner.DebugInfo, err error) error {
+func (r *E2ETestRunReconciler) updateStatusAfterRun(
+	ctx context.Context,
+	log logging.Logger,
+	run *testingopenmcpcloudv1alpha1.E2ETestRun,
+	testCase testingopenmcpcloudv1alpha1.TestCase,
+	status string,
+	exports runner.Exports,
+	debugIngo runner.DebugInfo,
+	err error) error {
 	tcStatus, statusErr := r.toApiTestCaseStatus(testCase.Name, status, exports, debugIngo, err)
 	if statusErr != nil {
 		log.Error(err, "error creating test case status", "testName", testCase.Name)
@@ -275,16 +283,8 @@ func setTestCaseCondition(status *testingopenmcpcloudv1alpha1.TestCaseStatus, co
 	status.Conditions = updatedConditions
 }
 
-// SetupWithManager sets up the controller with the Manager.
-func (r *E2ETestRunReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&testingopenmcpcloudv1alpha1.E2ETestRun{}).
-		Named("e2etestrun").
-		Complete(r)
-}
-
 // readConfig is a helper function to unmarshal the test case config from JSON RawMessage to runner.Config struct
-func (r *E2ETestRunReconciler) readConfig(config json.RawMessage) (runner.Config, error) {
+func readConfig(config json.RawMessage) (runner.Config, error) {
 	cfg := runner.Config{}
 	if config == nil {
 		return cfg, nil
@@ -293,4 +293,12 @@ func (r *E2ETestRunReconciler) readConfig(config json.RawMessage) (runner.Config
 		return nil, fmt.Errorf("error unmarshalling test case config: %w", err)
 	}
 	return cfg, nil
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *E2ETestRunReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&testingopenmcpcloudv1alpha1.E2ETestRun{}).
+		Named("e2etestrun").
+		Complete(r)
 }
