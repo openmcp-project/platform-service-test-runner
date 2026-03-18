@@ -127,6 +127,13 @@ func (r *E2ETestRunReconciler) cleanupTestCases(ctx context.Context, log logging
 			continue
 		}
 
+		existingStatus, found := runner.GetStatus(testCaseSpec.Name, run.Status.TestCases)
+		// if test case did not pass -> abort cleanup
+		if !found || !isTestCasePassed(*existingStatus) {
+			log.Info("Skipping cleanup", "testName", testCaseSpec.Name)
+			break
+		}
+
 		config, err := readConfig(testCaseSpec.Config)
 		if err != nil {
 			log.Error(err, "error reading test case config", "testName", testCaseSpec.Name)
