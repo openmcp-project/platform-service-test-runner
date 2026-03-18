@@ -12,9 +12,12 @@ type fakeTest struct {
 	runSuccess, cleanupSuccess bool
 	receivedRun                *v1alpha1.E2ETestRun
 	receivedConfig             runner.Config
+	runCalled                  bool
+	cleanupCalled              bool
 }
 
 func (ft *fakeTest) Run(_ context.Context, run *v1alpha1.E2ETestRun, config runner.Config) (runner.Exports, runner.DebugInfo, error) {
+	ft.runCalled = true
 	ft.receivedRun = run
 	ft.receivedConfig = config
 	if !ft.runSuccess {
@@ -24,6 +27,7 @@ func (ft *fakeTest) Run(_ context.Context, run *v1alpha1.E2ETestRun, config runn
 }
 
 func (ft *fakeTest) Cleanup(_ context.Context, run *v1alpha1.E2ETestRun, config runner.Config) error {
+	ft.cleanupCalled = true
 	ft.receivedRun = run
 	ft.receivedConfig = config
 	if !ft.cleanupSuccess {
