@@ -10,5 +10,9 @@ spec:
     - name: fakeTest
 status:
   testCases:
-    - name: "fakeTest"
-      status: "Passed"
+    - conditions:
+        - message: Test case run completed successfully
+          reason: TestPassed
+          status: "True"
+          type: RunCompleted
+      name: fakeTest

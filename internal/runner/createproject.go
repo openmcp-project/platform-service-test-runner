@@ -35,8 +35,9 @@ type CreateProjectTest struct {
 // It returns the project name and status namespace as exports for other test cases to use.
 // It reads chargingTarget and chargingTargetType from the config to set labels for cost allocation, if provided.
 func (c *CreateProjectTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, config Config) (Exports, DebugInfo, error) {
+	ctxTimeout := GetContextTimeoutOrDefault(config)
 	log := logging.FromContextOrPanic(ctx).WithName(createProject)
-	ctx, cancel := context.WithTimeout(ctx, defaultContextTimeout)
+	ctx, cancel := context.WithTimeout(ctx, ctxTimeout)
 	defer cancel()
 
 	projectName := fmt.Sprintf("%s-p", run.Name)
@@ -76,10 +77,13 @@ func (c *CreateProjectTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, c
 	}
 
 	if err := c.OnboardingClient.Create(ctx, project); err != nil {
-		return nil, nil, fmt.Errorf("project creation failed: %w", err)
+		if !errors.IsAlreadyExists(err) {
+			return nil, nil, fmt.Errorf("project creation failed: %w", err)
+		}
+		log.Debug("Project already exists, proceeding with existing resource", "name", projectName)
+	} else {
+		log.Debug("Project created", "name", project.Name)
 	}
-
-	log.Debug("Project created", "name", project.Name)
 
 	pollInterval := GetPollIntervalOrDefault(config)
 	pollTimeout := GetPollTimeoutOrDefault(config)

@@ -30,8 +30,9 @@ type CreateMcpTest struct {
 // Run creates a MCPv2 in the workspace created by the createWorkspace test case, with the given configuration, and waits until it's ready.
 // It returns the MCPv2 name and namespace as exports for other test cases to use.
 func (c *CreateMcpTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, config Config) (Exports, DebugInfo, error) {
+	ctxTimeout := GetContextTimeoutOrDefault(config)
 	log := logging.FromContextOrPanic(ctx).WithName(createMcpV2)
-	ctx, cancel := context.WithTimeout(ctx, defaultContextTimeout)
+	ctx, cancel := context.WithTimeout(ctx, ctxTimeout)
 	defer cancel()
 
 	// mcp creation depends on workspace creation, so we need to get the workspace namespace from the previous test case's exports
@@ -62,9 +63,13 @@ func (c *CreateMcpTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, confi
 	}
 
 	if err := c.OnboardingClient.Create(ctx, mcp); err != nil {
-		return nil, nil, err
+		if !errors.IsAlreadyExists(err) {
+			return nil, nil, fmt.Errorf("MCPv2 creation failed: %w", err)
+		}
+		log.Info("MCPv2 already exists, proceeding with existing resource", keyMcpName, mcp.Name, keyMcpNamespace, mcp.Namespace)
+	} else {
+		log.Info("MCPv2 created", keyMcpName, mcp.Name, keyMcpNamespace, mcp.Namespace)
 	}
-	log.Info("MCPv2 created", keyMcpName, mcp.Name, keyMcpNamespace, mcp.Namespace)
 
 	pollInterval := GetPollIntervalOrDefault(config)
 	pollTimeout := GetPollTimeoutOrDefault(config)
