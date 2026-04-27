@@ -14,7 +14,7 @@ includes:
       REPO_URL: 'https://github.com/openmcp-project/platform-service-test-runner'
       GENERATE_DOCS_INDEX: "true"
       CHART_COMPONENTS: "[]"
-      CRDS_COMPONENTS: platform-service-runner
+      CRDS_COMPONENTS: platform-service-test-runner
       CRDS_PATH: '{{.ROOT_DIR}}/api/crds/manifests'
 
 tasks:
