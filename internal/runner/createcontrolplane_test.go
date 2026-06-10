@@ -22,13 +22,13 @@ import (
 	"github.com/openmcp-project/platform-service-test-runner/api/v1alpha1"
 )
 
-var _ = Describe("CreateMcpTest", func() {
+var _ = Describe("CreateControlPlaneTest", func() {
 	var (
-		testCtx       context.Context
-		scheme        *runtime.Scheme
-		createMcpTest *CreateMcpTest
-		testRun       *v1alpha1.E2ETestRun
-		config        Config
+		testCtx                context.Context
+		scheme                 *runtime.Scheme
+		createControlPlaneTest *CreateControlPlaneTest
+		testRun                *v1alpha1.E2ETestRun
+		config                 Config
 	)
 
 	BeforeEach(func() {
@@ -48,7 +48,7 @@ var _ = Describe("CreateMcpTest", func() {
 	})
 
 	Describe("Run", func() {
-		It("should create a MCPv2, poll state and return exports", func() {
+		It("should create a ControlPlane, poll state and return exports", func() {
 			created := false
 			fakeClient := fake.NewClientBuilder().
 				WithScheme(scheme).
@@ -62,15 +62,15 @@ var _ = Describe("CreateMcpTest", func() {
 							return err
 						}
 						// Simulate controller setting status.phase to Ready after creation
-						if mcp, ok := obj.(*omcpv2alpha1.ManagedControlPlaneV2); ok && created {
-							mcp.Status.Phase = common.StatusPhaseReady
+						if cp, ok := obj.(*omcpv2alpha1.ControlPlane); ok && created {
+							cp.Status.Phase = common.StatusPhaseReady
 						}
 						return nil
 					},
 				}).
 				Build()
 
-			createMcpTest = &CreateMcpTest{OnboardingClient: fakeClient}
+			createControlPlaneTest = &CreateControlPlaneTest{OnboardingClient: fakeClient}
 			exportJSON, _ := utils.MarshalToRawMessage(Exports{
 				keyWorkspaceStatusNamespace: "workspace-namespace",
 			})
@@ -78,29 +78,29 @@ var _ = Describe("CreateMcpTest", func() {
 				Name:    createWorkspace,
 				Exports: exportJSON,
 			})
-			exports, _, err := createMcpTest.Run(testCtx, testRun, config)
+			exports, _, err := createControlPlaneTest.Run(testCtx, testRun, config)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(exports[keyMcpName]).To(Equal("test-run-mcpv2"))
-			Expect(exports[keyMcpNamespace]).To(Equal("workspace-namespace"))
+			Expect(exports[keyControlPlaneName]).To(Equal("test-run-cp"))
+			Expect(exports[keyControlPlaneNamespace]).To(Equal("workspace-namespace"))
 
-			// Verify MCPv2 was created
-			mcp := &omcpv2alpha1.ManagedControlPlaneV2{}
-			Expect(fakeClient.Get(testCtx, client.ObjectKey{Name: "test-run-mcpv2", Namespace: "workspace-namespace"}, mcp)).To(Succeed())
-			Expect(mcp.Labels["test-case"]).To(Equal(createMcpV2))
+			// Verify ControlPlane was created
+			cp := &omcpv2alpha1.ControlPlane{}
+			Expect(fakeClient.Get(testCtx, client.ObjectKey{Name: "test-run-cp", Namespace: "workspace-namespace"}, cp)).To(Succeed())
+			Expect(cp.Labels["test-case"]).To(Equal(createControlPlane))
 		})
 
-		It("should poll state if MCPv2 already exists and return exports", func() {
+		It("should poll state if ControlPlane already exists and return exports", func() {
 			fakeClient := fake.NewClientBuilder().
 				WithScheme(scheme).
 				WithInterceptorFuncs(interceptor.Funcs{
 					Create: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
-						return errors.NewAlreadyExists(schema.GroupResource{Group: "core.openmcp.cloud", Resource: "managedcontrolplanev2s"}, obj.GetName())
+						return errors.NewAlreadyExists(schema.GroupResource{Group: "core.open-control-plane.io", Resource: "controlplanes"}, obj.GetName())
 					},
 					Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-						// Simulate existing MCPv2 is ready
-						if mcp, ok := obj.(*omcpv2alpha1.ManagedControlPlaneV2); ok {
-							mcp.Status.Phase = common.StatusPhaseReady
+						// Simulate existing ControlPlane is ready
+						if cp, ok := obj.(*omcpv2alpha1.ControlPlane); ok {
+							cp.Status.Phase = common.StatusPhaseReady
 							return nil
 						}
 						return c.Get(ctx, key, obj, opts...)
@@ -108,7 +108,7 @@ var _ = Describe("CreateMcpTest", func() {
 				}).
 				Build()
 
-			createMcpTest = &CreateMcpTest{OnboardingClient: fakeClient}
+			createControlPlaneTest = &CreateControlPlaneTest{OnboardingClient: fakeClient}
 			exportJSON, _ := utils.MarshalToRawMessage(Exports{
 				keyWorkspaceStatusNamespace: "workspace-namespace",
 			})
@@ -116,14 +116,14 @@ var _ = Describe("CreateMcpTest", func() {
 				Name:    createWorkspace,
 				Exports: exportJSON,
 			})
-			exports, _, err := createMcpTest.Run(testCtx, testRun, config)
+			exports, _, err := createControlPlaneTest.Run(testCtx, testRun, config)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(exports[keyMcpName]).To(Equal("test-run-mcpv2"))
-			Expect(exports[keyMcpNamespace]).To(Equal("workspace-namespace"))
+			Expect(exports[keyControlPlaneName]).To(Equal("test-run-cp"))
+			Expect(exports[keyControlPlaneNamespace]).To(Equal("workspace-namespace"))
 		})
 
-		It("should return error if MCPv2 creation fails", func() {
+		It("should return error if ControlPlane creation fails", func() {
 			fakeClient := fake.NewClientBuilder().
 				WithScheme(scheme).
 				WithInterceptorFuncs(interceptor.Funcs{
@@ -133,7 +133,7 @@ var _ = Describe("CreateMcpTest", func() {
 				}).
 				Build()
 
-			createMcpTest = &CreateMcpTest{OnboardingClient: fakeClient}
+			createControlPlaneTest = &CreateControlPlaneTest{OnboardingClient: fakeClient}
 			exportJSON, _ := utils.MarshalToRawMessage(Exports{
 				keyWorkspaceStatusNamespace: "workspace-namespace",
 			})
@@ -141,7 +141,7 @@ var _ = Describe("CreateMcpTest", func() {
 				Name:    createWorkspace,
 				Exports: exportJSON,
 			})
-			_, _, err := createMcpTest.Run(testCtx, testRun, config)
+			_, _, err := createControlPlaneTest.Run(testCtx, testRun, config)
 
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("creation failed"))
@@ -150,10 +150,10 @@ var _ = Describe("CreateMcpTest", func() {
 	})
 
 	Describe("Cleanup", func() {
-		It("should delete MCPv2 successfully", func() {
-			mcp := &omcpv2alpha1.ManagedControlPlaneV2{
+		It("should delete ControlPlane successfully", func() {
+			cp := &omcpv2alpha1.ControlPlane{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-run-mcpv2",
+					Name:      "test-run-cp",
 					Namespace: "workspace-namespace",
 				},
 			}
@@ -161,11 +161,11 @@ var _ = Describe("CreateMcpTest", func() {
 			deleteCount := 0
 			fakeClient := fake.NewClientBuilder().
 				WithScheme(scheme).
-				WithObjects(mcp).
+				WithObjects(cp).
 				WithInterceptorFuncs(interceptor.Funcs{
 					Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 						if deleteCount > 0 {
-							return errors.NewNotFound(schema.GroupResource{Group: "core.openmcp.cloud", Resource: "managedcontrolplanev2s"}, key.Name)
+							return errors.NewNotFound(schema.GroupResource{Group: "core.open-control-plane.io", Resource: "controlplanes"}, key.Name)
 						}
 						return c.Get(ctx, key, obj, opts...)
 					},
@@ -176,42 +176,42 @@ var _ = Describe("CreateMcpTest", func() {
 				}).
 				Build()
 
-			createMcpTest = &CreateMcpTest{OnboardingClient: fakeClient}
+			createControlPlaneTest = &CreateControlPlaneTest{OnboardingClient: fakeClient}
 			exportJSON, _ := utils.MarshalToRawMessage(Exports{
-				keyMcpName:      "test-run-mcpv2",
-				keyMcpNamespace: "workspace-namespace",
+				keyControlPlaneName:      "test-run-cp",
+				keyControlPlaneNamespace: "workspace-namespace",
 			})
 			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
-				Name:    createMcpV2,
+				Name:    createControlPlane,
 				Exports: exportJSON,
 			})
 
-			err := createMcpTest.Cleanup(testCtx, testRun, nil)
+			err := createControlPlaneTest.Cleanup(testCtx, testRun, nil)
 
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should succeed if MCPv2 already deleted", func() {
+		It("should succeed if ControlPlane already deleted", func() {
 			fakeClient := fake.NewClientBuilder().
 				WithScheme(scheme).
 				WithInterceptorFuncs(interceptor.Funcs{
 					Delete: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
-						return errors.NewNotFound(schema.GroupResource{Group: "core.openmcp.cloud", Resource: "managedcontrolplanev2s"}, obj.GetName())
+						return errors.NewNotFound(schema.GroupResource{Group: "core.open-control-plane.io", Resource: "controlplanes"}, obj.GetName())
 					},
 				}).
 				Build()
 
-			createMcpTest = &CreateMcpTest{OnboardingClient: fakeClient}
+			createControlPlaneTest = &CreateControlPlaneTest{OnboardingClient: fakeClient}
 			exportJSON, _ := utils.MarshalToRawMessage(Exports{
-				keyMcpName:      "test-run-mcpv2",
-				keyMcpNamespace: "workspace-namespace",
+				keyControlPlaneName:      "test-run-cp",
+				keyControlPlaneNamespace: "workspace-namespace",
 			})
 			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
-				Name:    createMcpV2,
+				Name:    createControlPlane,
 				Exports: exportJSON,
 			})
 
-			err := createMcpTest.Cleanup(testCtx, testRun, nil)
+			err := createControlPlaneTest.Cleanup(testCtx, testRun, nil)
 
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -226,20 +226,20 @@ var _ = Describe("CreateMcpTest", func() {
 				}).
 				Build()
 
-			createMcpTest = &CreateMcpTest{OnboardingClient: fakeClient}
+			createControlPlaneTest = &CreateControlPlaneTest{OnboardingClient: fakeClient}
 			exportJSON, _ := utils.MarshalToRawMessage(Exports{
-				keyMcpName:      "test-run-mcpv2",
-				keyMcpNamespace: "workspace-namespace",
+				keyControlPlaneName:      "test-run-cp",
+				keyControlPlaneNamespace: "workspace-namespace",
 			})
 			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
-				Name:    createMcpV2,
+				Name:    createControlPlane,
 				Exports: exportJSON,
 			})
 
-			err := createMcpTest.Cleanup(testCtx, testRun, nil)
+			err := createControlPlaneTest.Cleanup(testCtx, testRun, nil)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("MCPv2 deletion failed"))
+			Expect(err.Error()).To(ContainSubstring("ControlPlane deletion failed"))
 		})
 	})
 })

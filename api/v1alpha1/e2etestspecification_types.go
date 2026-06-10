@@ -64,5 +64,5 @@ type E2ETestSpecificationList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&E2ETestSpecification{}, &E2ETestSpecificationList{})
+	RegisterToSchemeBuilder(&E2ETestSpecification{}, &E2ETestSpecificationList{})
 }

@@ -196,7 +196,7 @@ func (o *RunOptions) Run(ctx context.Context) error {
 				Rules: []rbacv1.PolicyRule{
 					// openmcp-operator CRDs (ManagedControlPlane, etc.)
 					{
-						APIGroups: []string{"clusters.openmcp.cloud", "core.openmcp.cloud"},
+						APIGroups: []string{"clusters.openmcp.cloud", "core.open-control-plane.io"},
 						Resources: []string{"*"},
 						Verbs:     []string{"*"},
 					},
@@ -266,7 +266,7 @@ func (o *RunOptions) Run(ctx context.Context) error {
 	// register test cases here
 	testRegistry.RegisterTestCase("createProject", &runner.CreateProjectTest{OnboardingClient: onboardingCluster.Client()})
 	testRegistry.RegisterTestCase("createWorkspace", &runner.CreateWorkspaceTest{OnboardingClient: onboardingCluster.Client()})
-	testRegistry.RegisterTestCase("createManagedControlPlaneV2", &runner.CreateMcpTest{OnboardingClient: onboardingCluster.Client()})
+	testRegistry.RegisterTestCase("createManagedControlPlaneV2", &runner.CreateControlPlaneTest{OnboardingClient: onboardingCluster.Client()})
 
 	// setup TestRun reconciler
 	if err := e2etestrun.NewE2ETestRunReconciler(o.PlatformCluster, mgr.GetEventRecorder(e2etestrun.ControllerName), identity, testRegistry).SetupWithManager(mgr); err != nil {

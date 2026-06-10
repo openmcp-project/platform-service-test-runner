@@ -92,5 +92,5 @@ type E2ETestRunList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&E2ETestRun{}, &E2ETestRunList{})
+	RegisterToSchemeBuilder(&E2ETestRun{}, &E2ETestRunList{})
 }
