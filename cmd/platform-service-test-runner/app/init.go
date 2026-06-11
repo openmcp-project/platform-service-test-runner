@@ -77,7 +77,7 @@ func (o *InitOptions) Run(ctx context.Context) error {
 				Rules: []rbacv1.PolicyRule{
 					// openmcp-operator CRDs (ManagedControlPlane, etc.)
 					{
-						APIGroups: []string{"clusters.openmcp.cloud", "core.openmcp.cloud"},
+						APIGroups: []string{"clusters.openmcp.cloud", "core.open-control-plane.io"},
 						Resources: []string{"*"},
 						Verbs:     []string{"*"},
 					},
