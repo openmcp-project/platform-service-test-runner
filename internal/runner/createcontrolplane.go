@@ -18,9 +18,10 @@ import (
 )
 
 const (
-	createControlPlane       = "createControlPlane"
-	keyControlPlaneName      = "controlplane.name"
-	keyControlPlaneNamespace = "controlplane.namespace"
+	createControlPlane          = "createControlPlane"
+	createManagedControlPlaneV2 = "createManagedControlPlaneV2"
+	keyControlPlaneName         = "controlplane.name"
+	keyControlPlaneNamespace    = "controlplane.namespace"
 )
 
 type CreateControlPlaneTest struct {
@@ -31,7 +32,7 @@ type CreateControlPlaneTest struct {
 // It returns the ControlPlane name and namespace as exports for other test cases to use.
 func (c *CreateControlPlaneTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, config Config) (Exports, DebugInfo, error) {
 	ctxTimeout := GetContextTimeoutOrDefault(config)
-	log := logging.FromContextOrPanic(ctx).WithName(createControlPlane)
+	log := logging.FromContextOrPanic(ctx).WithName(createManagedControlPlaneV2)
 	ctx, cancel := context.WithTimeout(ctx, ctxTimeout)
 	defer cancel()
 
@@ -56,7 +57,7 @@ func (c *CreateControlPlaneTest) Run(ctx context.Context, run *v1alpha1.E2ETestR
 			Name:      cpName,
 			Namespace: cpNamespace,
 			Labels: map[string]string{
-				labelTestCase: createControlPlane,
+				labelTestCase: createManagedControlPlaneV2,
 			},
 		},
 		Spec: omcpv2alpha1.ControlPlaneSpec{},
@@ -88,19 +89,19 @@ func (c *CreateControlPlaneTest) Run(ctx context.Context, run *v1alpha1.E2ETestR
 
 // Cleanup deletes the ControlPlane created in the Run method, identified via own export. It waits until the ControlPlane is fully deleted before returning.
 func (c *CreateControlPlaneTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRun, config Config) error {
-	log := logging.FromContextOrPanic(ctx).WithName(createControlPlane)
+	log := logging.FromContextOrPanic(ctx).WithName(createManagedControlPlaneV2)
 	ctx, cancel := context.WithTimeout(ctx, defaultContextTimeout)
 	defer cancel()
 
-	ownStatus, found := GetStatus(createControlPlane, run.Status.TestCases)
+	ownStatus, found := GetStatus(createManagedControlPlaneV2, run.Status.TestCases)
 	if !found {
-		return fmt.Errorf("cannot find '%s' test case status", createControlPlane)
+		return fmt.Errorf("cannot find '%s' test case status", createManagedControlPlaneV2)
 	}
 
 	// Unmarshal exports from JSON
 	var exports Exports
 	if err := json.Unmarshal(ownStatus.Exports, &exports); err != nil {
-		return fmt.Errorf("failed to unmarshal exports from %s: %w", createControlPlane, err)
+		return fmt.Errorf("failed to unmarshal exports from %s: %w", createManagedControlPlaneV2, err)
 	}
 
 	cpName := utils.GetAsString(exports, keyControlPlaneName)

@@ -7,4 +7,4 @@ spec:
   testCases:
     - name: createProject
     - name: createWorkspace
-    - name: createControlPlane
+    - name: createManagedControlPlaneV2

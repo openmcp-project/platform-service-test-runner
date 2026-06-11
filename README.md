@@ -24,7 +24,7 @@ spec:
       config: {}
     - name: createWorkspace
       config: {}
-    - name: createControlPlane
+    - name: createManagedControlPlaneV2
       config: {}
 ```
 
@@ -68,7 +68,7 @@ spec:
     - config:
         pollInterval: 20s
         pollTimeout: 15m
-      name: createControlPlane
+      name: createManagedControlPlaneV2
       
 status:
   testCases:
@@ -117,7 +117,7 @@ status:
       exports:
         mcp.name: run-1772628360009-cp
         mcp.namespace: project-run-1772628360009-p--ws-run-1772628360009-ws
-      name: createControlPlane
+      name: createManagedControlPlaneV2
 ```
 
 ## Implementing New Test Cases
@@ -170,7 +170,7 @@ testRegistry := runner.NewTestRegistry()
 // register test cases here
 testRegistry.RegisterTestCase("createProject", &runner.CreateProjectTest{OnboardingClient: onboardingCluster.Client()})
 testRegistry.RegisterTestCase("createWorkspace", &runner.CreateWorkspaceTest{OnboardingClient: onboardingCluster.Client()})
-testRegistry.RegisterTestCase("createControlPlane", &runner.CreateControlPlaneTest{OnboardingClient: onboardingCluster.Client()})
+testRegistry.RegisterTestCase("createManagedControlPlaneV2", &runner.CreateControlPlaneTest{OnboardingClient: onboardingCluster.Client()})
 ```
 
 ## Requirements and Setup
