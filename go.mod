@@ -7,7 +7,7 @@ require (
 	github.com/onsi/gomega v1.42.0
 	github.com/openmcp-project/controller-utils v0.30.0
 	github.com/openmcp-project/openmcp-operator/api v1.1.0
-	github.com/openmcp-project/openmcp-operator/lib v1.0.0
+	github.com/openmcp-project/openmcp-operator/lib v1.1.0
 	github.com/openmcp-project/platform-service-project-workspace/api/v2 v2.0.1
 	github.com/openmcp-project/project-workspace-operator/api v1.4.0
 	github.com/robfig/cron/v3 v3.0.1
@@ -22,7 +22,7 @@ require (
 
 require (
 	cel.dev/expr v0.25.2 // indirect
-	github.com/Masterminds/semver/v3 v3.4.0 // indirect
+	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect

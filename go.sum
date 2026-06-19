@@ -1,7 +1,7 @@
 cel.dev/expr v0.25.2 h1:K6j46C81hXtZQfuX60cVWQFBJahKSE2gfRbNuvr5bFs=
 cel.dev/expr v0.25.2/go.mod h1:hrXvqGP6G6gyx8UAHSHJ5RGk//1Oj5nXQ2NI02Nrsg4=
-github.com/Masterminds/semver/v3 v3.4.0 h1:Zog+i5UMtVoCU8oKka5P7i9q9HgrJeGzI9SA1Xbatp0=
-github.com/Masterminds/semver/v3 v3.4.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
+github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=
+github.com/Masterminds/semver/v3 v3.5.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
 github.com/antlr4-go/antlr/v4 v4.13.0 h1:lxCg3LAv+EUK6t1i0y1V6/SLeUi0eKEKdhQAlS8TVTI=
 github.com/antlr4-go/antlr/v4 v4.13.0/go.mod h1:pfChB/xh/Unjila75QW7+VU4TSnWnnk9UTnmpPaOR2g=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
@@ -141,8 +141,8 @@ github.com/openmcp-project/controller-utils v0.30.0 h1:x/lO7x6m2pI2P743psb1JT3EN
 github.com/openmcp-project/controller-utils v0.30.0/go.mod h1:0cTnMHPjrH+FUdazOTD637KTQZ4JZ+5SSiGQkY6vC4g=
 github.com/openmcp-project/openmcp-operator/api v1.1.0 h1:zw/knjSK7pkGuJNYOLp19nxqGy6YmOF9nGSqnG6X2cs=
 github.com/openmcp-project/openmcp-operator/api v1.1.0/go.mod h1:5JNdGyGH75zeS02WUSL2hkx40UuWaG0a5Mtmzk/yHFM=
-github.com/openmcp-project/openmcp-operator/lib v1.0.0 h1:pbvFvQzWMZfEH+T4v32DddD4Aj0X17xu+E3Upwt0DOk=
-github.com/openmcp-project/openmcp-operator/lib v1.0.0/go.mod h1:RFgTSRBF1T0UZaEvfKqLRsjrusnAatD0j/lRRSWyny0=
+github.com/openmcp-project/openmcp-operator/lib v1.1.0 h1:lNRDa9+ZPQeAWJ93PQpjG2zMU1oufBMDV689PXkHtf8=
+github.com/openmcp-project/openmcp-operator/lib v1.1.0/go.mod h1:XrN27weczWRbIvncCEAiIghmuSBSVCHbbA72X0CWvDU=
 github.com/openmcp-project/platform-service-project-workspace/api/v2 v2.0.1 h1:A8wSaOGtR29TkWea4IWlYG8IpHGY8tnmwHoHJQCp/gM=
 github.com/openmcp-project/platform-service-project-workspace/api/v2 v2.0.1/go.mod h1:GyPQLqU7qJrBwd0hsocQbSFUdW8fgkOMsKuIUAPclmk=
 github.com/openmcp-project/project-workspace-operator/api v1.4.0 h1:ysyN95Dyw2giHl8oEODpzpdLCVxEEZ5E28ycyLe/5kA=
