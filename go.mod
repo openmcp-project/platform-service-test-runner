@@ -9,7 +9,7 @@ require (
 	github.com/openmcp-project/openmcp-operator/api v1.3.0
 	github.com/openmcp-project/openmcp-operator/lib v1.3.0
 	github.com/openmcp-project/platform-service-project-workspace/api/v2 v2.2.0
-	github.com/openmcp-project/project-workspace-operator/api/v2 v2.2.0
+	github.com/openmcp-project/project-workspace-operator/api v1.4.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/cobra v1.10.2
 	k8s.io/api v0.36.2
@@ -19,6 +19,8 @@ require (
 	sigs.k8s.io/controller-runtime v0.24.1
 	sigs.k8s.io/yaml v1.6.0
 )
+
+replace github.com/openmcp-project/project-workspace-operator/api/v2 => github.com/openmcp-project/platform-service-project-workspaceapi/v2 v2.2.0
 
 require (
 	cel.dev/expr v0.25.2 // indirect
