@@ -75,7 +75,7 @@ func (o *InitOptions) Run(ctx context.Context) error {
 		providerscheme.InstallOperatorAPIsOnboarding(runtime.NewScheme()), []clustersv1alpha1.PermissionsRequest{
 			{
 				Rules: []rbacv1.PolicyRule{
-					// openmcp-operator CRDs (ManagedControlPlane, etc.)
+					// openmcp-operator CRDs (ControlPlane, etc.)
 					{
 						APIGroups: []string{"clusters.openmcp.cloud", "core.open-control-plane.io"},
 						Resources: []string{"*"},
@@ -106,7 +106,7 @@ func (o *InitOptions) Run(ctx context.Context) error {
 		return fmt.Errorf("error creating onboarding cluster access: %w", err)
 	}
 
-	// apply openmcp-operator CRDs (includes ManagedControlPlane, etc.)
+	// apply openmcp-operator CRDs (includes ControlPlane, etc.)
 	crdManager := crdutil.NewCRDManager(openmcpconst.ClusterLabel, openmcpcrds.CRDs)
 	crdManager.AddCRDLabelToClusterMapping(clustersv1alpha1.PURPOSE_PLATFORM, o.PlatformCluster)
 	crdManager.AddCRDLabelToClusterMapping(clustersv1alpha1.PURPOSE_ONBOARDING, onboardingCluster)
