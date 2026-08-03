@@ -87,7 +87,7 @@ var _ = Describe("CreateControlPlaneTest", func() {
 			// Verify ControlPlane was created
 			cp := &omcpv2alpha1.ControlPlane{}
 			Expect(fakeClient.Get(testCtx, client.ObjectKey{Name: "test-run-cp", Namespace: "workspace-namespace"}, cp)).To(Succeed())
-			Expect(cp.Labels["test-case"]).To(Equal(createManagedControlPlaneV2))
+			Expect(cp.Labels["test-case"]).To(Equal(createControlPlane))
 		})
 
 		It("should poll state if ControlPlane already exists and return exports", func() {
@@ -182,7 +182,7 @@ var _ = Describe("CreateControlPlaneTest", func() {
 				keyControlPlaneNamespace: "workspace-namespace",
 			})
 			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
-				Name:    createManagedControlPlaneV2,
+				Name:    createControlPlane,
 				Exports: exportJSON,
 			})
 
@@ -207,7 +207,7 @@ var _ = Describe("CreateControlPlaneTest", func() {
 				keyControlPlaneNamespace: "workspace-namespace",
 			})
 			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
-				Name:    createManagedControlPlaneV2,
+				Name:    createControlPlane,
 				Exports: exportJSON,
 			})
 
@@ -232,7 +232,7 @@ var _ = Describe("CreateControlPlaneTest", func() {
 				keyControlPlaneNamespace: "workspace-namespace",
 			})
 			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
-				Name:    createManagedControlPlaneV2,
+				Name:    createControlPlane,
 				Exports: exportJSON,
 			})
 
