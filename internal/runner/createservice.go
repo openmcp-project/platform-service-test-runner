@@ -151,7 +151,12 @@ func (c *CreateServiceTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRu
 
 	pollInterval := GetPollIntervalOrDefault(config)
 	pollTimeout := GetPollTimeoutOrDefault(config)
-	if err := WaitForDeletion(ctx, c.OnboardingClient, svcName, svcNamespace, &unstructured.Unstructured{}, pollInterval, pollTimeout); err != nil {
+	if err := WaitForDeletion(ctx, c.OnboardingClient, svcName, svcNamespace, &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": apiVersion,
+			"kind":       kind,
+		},
+	}, pollInterval, pollTimeout); err != nil {
 		return fmt.Errorf("polling service resource after deletion failed: %w", err)
 	}
 	log.Debug("Service resource deleted", keyServiceName, svcName, keyServiceNamespace, svcNamespace)
