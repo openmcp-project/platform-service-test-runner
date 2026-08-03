@@ -8,7 +8,7 @@ require (
 	github.com/openmcp-project/controller-utils v0.31.0
 	github.com/openmcp-project/openmcp-operator/api v1.3.0
 	github.com/openmcp-project/openmcp-operator/lib v1.3.0
-	github.com/openmcp-project/platform-service-project-workspace/api/v2 v2.2.0
+	github.com/openmcp-project/platform-service-project-workspace/api/v2 v2.3.0
 	github.com/openmcp-project/project-workspace-operator/api v1.4.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/cobra v1.10.2
