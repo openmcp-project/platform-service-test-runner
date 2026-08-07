@@ -33,6 +33,11 @@ type DebugInfo map[string]interface{}
 
 // TestCase defines the interface for a modular E2E test case. Each test case must implement Run and Cleanup.
 type TestCase interface {
+	// StatusName returns the name used to identify this test case's status entry.
+	// For test cases with a fixed name this is a constant; for test cases that can appear
+	// multiple times (e.g. createService) it incorporates a discriminator from config (e.g. the manifest kind).
+	StatusName(config Config) string
+
 	// Run executes the test case. It receives the test run and config, and can return exports for other test cases, error details, and debug info.
 	Run(ctx context.Context, run *v1alpha1.E2ETestRun, config Config) (Exports, DebugInfo, error)
 

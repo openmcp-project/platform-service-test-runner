@@ -31,6 +31,8 @@ type CreateProjectTest struct {
 	OnboardingClient client.Client
 }
 
+func (c *CreateProjectTest) StatusName(_ Config) string { return createProject }
+
 // Run creates a project with the given configuration and waits until it's ready.
 // It returns the project name and status namespace as exports for other test cases to use.
 // It reads chargingTarget and chargingTargetType from the config to set labels for cost allocation, if provided.

@@ -177,11 +177,11 @@ var _ = Describe("CreateServiceTest", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
-				Name:    createService,
+				Name:    createService + "/Crossplane",
 				Exports: svcExportJSON,
 			})
 
-			Expect(createServiceTest.Cleanup(testCtx, testRun, nil)).To(Succeed())
+			Expect(createServiceTest.Cleanup(testCtx, testRun, config)).To(Succeed())
 			Expect(deleteCount).To(Equal(1))
 		})
 
@@ -204,11 +204,11 @@ var _ = Describe("CreateServiceTest", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 			testRun.Status.TestCases = append(testRun.Status.TestCases, v1alpha1.TestCaseStatus{
-				Name:    createService,
+				Name:    createService + "/Crossplane",
 				Exports: svcExportJSON,
 			})
 
-			Expect(createServiceTest.Cleanup(testCtx, testRun, nil)).To(Succeed())
+			Expect(createServiceTest.Cleanup(testCtx, testRun, config)).To(Succeed())
 		})
 	})
 })

@@ -16,6 +16,8 @@ type fakeTest struct {
 	cleanupCalled              bool
 }
 
+func (ft *fakeTest) StatusName(_ runner.Config) string { return "fakeTest" }
+
 func (ft *fakeTest) Run(_ context.Context, run *v1alpha1.E2ETestRun, config runner.Config) (runner.Exports, runner.DebugInfo, error) {
 	ft.runCalled = true
 	ft.receivedRun = run
