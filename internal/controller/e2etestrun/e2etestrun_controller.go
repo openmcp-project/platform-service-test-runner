@@ -133,6 +133,11 @@ func (r *E2ETestRunReconciler) cleanupTestCases(ctx context.Context, log logging
 			log.Info("Skipping cleanup", "testName", testCaseSpec.Name)
 			break
 		}
+		// if already cleaned up successfully -> skip
+		if isTestCaseCleanupSucceeded(*existingStatus) {
+			log.Info("Cleanup already completed, skipping", "testName", testCaseSpec.Name)
+			continue
+		}
 
 		config, err := readConfig(testCaseSpec.Config)
 		if err != nil {
@@ -280,6 +285,12 @@ func isTestCaseFailed(status testingopenmcpcloudv1alpha1.TestCaseStatus) bool {
 func isTestCaseCleanupFailed(status testingopenmcpcloudv1alpha1.TestCaseStatus) bool {
 	cond := conditions.GetCondition(status.Conditions, testingopenmcpcloudv1alpha1.TestCaseConditionCleanupCompleted)
 	return cond != nil && cond.Status == metav1.ConditionFalse
+}
+
+// isTestCaseCleanupSucceeded checks if a test case cleanup has already completed successfully.
+func isTestCaseCleanupSucceeded(status testingopenmcpcloudv1alpha1.TestCaseStatus) bool {
+	cond := conditions.GetCondition(status.Conditions, testingopenmcpcloudv1alpha1.TestCaseConditionCleanupCompleted)
+	return cond != nil && cond.Status == metav1.ConditionTrue
 }
 
 // setTestCaseCondition updates or adds a condition to a test case status using the conditions updater
