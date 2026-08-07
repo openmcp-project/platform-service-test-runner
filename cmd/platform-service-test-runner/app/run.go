@@ -218,6 +218,12 @@ func (o *RunOptions) Run(ctx context.Context) error {
 						Resources: []string{"namespaces", "secrets", "configmaps"},
 						Verbs:     []string{"*"},
 					},
+					// TODO: temporarily grant full access for *.services.open-control-plane.io
+					{
+						APIGroups: []string{"*"},
+						Resources: []string{"*"},
+						Verbs:     []string{"*"},
+					},
 				},
 			},
 		})
