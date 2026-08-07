@@ -37,6 +37,20 @@ type CreateServiceTest struct {
 	OnboardingClient client.Client
 }
 
+// StatusName returns "createService/<Kind>" derived from the manifest in config,
+// so that multiple createService entries with different service kinds get distinct status names.
+func (c *CreateServiceTest) StatusName(config Config) string {
+	manifestYAML := utils.GetAsString(config, configManifest)
+	if manifestYAML == "" {
+		return createService
+	}
+	obj, err := parseManifest(manifestYAML)
+	if err != nil || obj.GetKind() == "" {
+		return createService
+	}
+	return createService + "/" + obj.GetKind()
+}
+
 // Run applies an arbitrary ServiceProvider resource derived from the manifest in config to the
 // onboarding cluster in the namespace of the ControlPlane created by createControlPlane. It then
 // polls until all JSONPath assertions pass.
@@ -114,9 +128,9 @@ func (c *CreateServiceTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRu
 	ctx, cancel := context.WithTimeout(ctx, defaultContextTimeout)
 	defer cancel()
 
-	ownStatus, found := GetStatus(createService, run.Status.TestCases)
+	ownStatus, found := GetStatus(c.StatusName(config), run.Status.TestCases)
 	if !found {
-		return fmt.Errorf("cannot find '%s' test case status", createService)
+		return fmt.Errorf("cannot find '%s' test case status", c.StatusName(config))
 	}
 
 	var exports Exports
