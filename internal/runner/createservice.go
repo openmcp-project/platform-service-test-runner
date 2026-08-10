@@ -124,13 +124,15 @@ func (c *CreateServiceTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, c
 
 // Cleanup deletes the service resource created in Run, identified via own exports.
 func (c *CreateServiceTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRun, config Config) error {
+	ctxTimeout := GetContextTimeoutOrDefault(config)
 	log := logging.FromContextOrPanic(ctx).WithName(createService)
-	ctx, cancel := context.WithTimeout(ctx, defaultContextTimeout)
+	ctx, cancel := context.WithTimeout(ctx, ctxTimeout)
 	defer cancel()
 
-	ownStatus, found := GetStatus(c.StatusName(config), run.Status.TestCases)
+	statusName := c.StatusName(config)
+	ownStatus, found := GetStatus(statusName, run.Status.TestCases)
 	if !found {
-		return fmt.Errorf("cannot find '%s' test case status", c.StatusName(config))
+		return fmt.Errorf("cannot find '%s' test case status", statusName)
 	}
 
 	var exports Exports
@@ -147,7 +149,13 @@ func (c *CreateServiceTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRu
 		return fmt.Errorf("export %s not found or empty", keyServiceNamespace)
 	}
 	apiVersion := utils.GetAsString(exports, keyServiceAPIVersion)
+	if apiVersion == "" {
+		return fmt.Errorf("export %s not found or empty", keyServiceAPIVersion)
+	}
 	kind := utils.GetAsString(exports, keyServiceKind)
+	if kind == "" {
+		return fmt.Errorf("export %s not found or empty", keyServiceKind)
+	}
 
 	obj := &unstructured.Unstructured{}
 	obj.SetName(svcName)
