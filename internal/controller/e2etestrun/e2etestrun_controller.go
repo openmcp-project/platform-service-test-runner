@@ -78,39 +78,41 @@ func (r *E2ETestRunReconciler) runTestCases(ctx context.Context, log logging.Log
 			return fmt.Errorf("test not found in registry, testName %s", testCaseSpec.Name)
 		}
 
-		existingStatus, found := runner.GetStatus(testCaseSpec.Name, run.Status.TestCases)
-		// if already passed -> skip
-		if found && isTestCasePassed(*existingStatus) {
-			log.Info("Skipping already passed test", "testName", testCaseSpec.Name)
-			continue
-		}
-		// if already failed -> skip the rest of the tests
-		if found && isTestCaseFailed(*existingStatus) {
-			log.Info("Skipping test and the rest of the tests due to previous failure", "testName", testCaseSpec.Name)
-			return nil
-		}
-
 		config, err := readConfig(testCaseSpec.Config)
 		if err != nil {
 			log.Error(err, "error reading test case config", "testName", testCaseSpec.Name)
-			if statusErr := r.updateStatusAfterRun(ctx, log, run, testCaseSpec, TestStatusFailed, nil, nil, err); statusErr != nil {
+			if statusErr := r.updateStatusAfterRun(ctx, log, run, testCaseSpec.Name, TestStatusFailed, nil, nil, err); statusErr != nil {
 				return statusErr
 			}
 			return err
 		}
 		config["identity"] = r.identity
 
-		log.Info("Running test", "testName", testCaseSpec.Name)
+		statusName := testCase.StatusName(config)
+
+		existingStatus, found := runner.GetStatus(statusName, run.Status.TestCases)
+		// if already passed -> skip
+		if found && isTestCasePassed(*existingStatus) {
+			log.Info("Skipping already passed test", "testName", statusName)
+			continue
+		}
+		// if already failed -> skip the rest of the tests
+		if found && isTestCaseFailed(*existingStatus) {
+			log.Info("Skipping test and the rest of the tests due to previous failure", "testName", statusName)
+			return nil
+		}
+
+		log.Info("Running test", "testName", statusName)
 		testExports, debugInfo, err := testCase.Run(ctx, run, config)
 		if err != nil {
-			log.Error(err, "error running test", "testName", testCaseSpec.Name)
-			if statusErr := r.updateStatusAfterRun(ctx, log, run, testCaseSpec, TestStatusFailed, testExports, debugInfo, err); statusErr != nil {
+			log.Error(err, "error running test", "testName", statusName)
+			if statusErr := r.updateStatusAfterRun(ctx, log, run, statusName, TestStatusFailed, testExports, debugInfo, err); statusErr != nil {
 				return statusErr
 			}
 			return err
 		}
 
-		if statusErr := r.updateStatusAfterRun(ctx, log, run, testCaseSpec, TestStatusPassed, testExports, debugInfo, err); statusErr != nil {
+		if statusErr := r.updateStatusAfterRun(ctx, log, run, statusName, TestStatusPassed, testExports, debugInfo, err); statusErr != nil {
 			return statusErr
 		}
 	}
@@ -127,28 +129,32 @@ func (r *E2ETestRunReconciler) cleanupTestCases(ctx context.Context, log logging
 			continue
 		}
 
-		existingStatus, found := runner.GetStatus(testCaseSpec.Name, run.Status.TestCases)
-		// if test case did not pass -> abort cleanup
-		if !found || !isTestCasePassed(*existingStatus) {
-			log.Info("Skipping cleanup", "testName", testCaseSpec.Name)
-			break
-		}
-
 		config, err := readConfig(testCaseSpec.Config)
 		if err != nil {
-			log.Error(err, "error reading test case config", "testName", testCaseSpec.Name)
-			if statusErr := r.updateStatusAfterRun(ctx, log, run, testCaseSpec, TestStatusFailed, nil, nil, err); statusErr != nil {
-				return statusErr
-			}
+			log.Error(err, "error reading test case config during cleanup", "testName", testCaseSpec.Name)
 			return err
 		}
 		config["identity"] = r.identity
 
-		log.Info("Running cleanup for test", "testName", testCaseSpec.Name)
+		statusName := test.StatusName(config)
+
+		existingStatus, found := runner.GetStatus(statusName, run.Status.TestCases)
+		// if test case did not pass -> abort cleanup
+		if !found || !isTestCasePassed(*existingStatus) {
+			log.Info("Skipping cleanup", "testName", statusName)
+			break
+		}
+		// if already cleaned up successfully -> skip
+		if isTestCaseCleanupSucceeded(*existingStatus) {
+			log.Info("Cleanup already completed, skipping", "testName", statusName)
+			continue
+		}
+
+		log.Info("Running cleanup for test", "testName", statusName)
 		cleanupErr := test.Cleanup(ctx, run, config)
 
 		// Update test case status condition based on cleanup result
-		if err := r.updateStatusAfterCleanup(ctx, log, run, testCaseSpec.Name, cleanupErr); err != nil {
+		if err := r.updateStatusAfterCleanup(ctx, log, run, statusName, cleanupErr); err != nil {
 			return err
 		}
 
@@ -204,14 +210,14 @@ func (r *E2ETestRunReconciler) updateStatusAfterRun(
 	ctx context.Context,
 	log logging.Logger,
 	run *testingopenmcpcloudv1alpha1.E2ETestRun,
-	testCase testingopenmcpcloudv1alpha1.TestCase,
+	statusName string,
 	status string,
 	exports runner.Exports,
 	debugIngo runner.DebugInfo,
 	err error) error {
-	tcStatus, statusErr := r.toApiTestCaseStatus(testCase.Name, status, exports, debugIngo, err)
+	tcStatus, statusErr := r.toApiTestCaseStatus(statusName, status, exports, debugIngo, err)
 	if statusErr != nil {
-		log.Error(err, "error creating test case status", "testName", testCase.Name)
+		log.Error(err, "error creating test case status", "testName", statusName)
 		return statusErr
 	}
 	run.Status.TestCases = append(run.Status.TestCases, tcStatus)
@@ -280,6 +286,12 @@ func isTestCaseFailed(status testingopenmcpcloudv1alpha1.TestCaseStatus) bool {
 func isTestCaseCleanupFailed(status testingopenmcpcloudv1alpha1.TestCaseStatus) bool {
 	cond := conditions.GetCondition(status.Conditions, testingopenmcpcloudv1alpha1.TestCaseConditionCleanupCompleted)
 	return cond != nil && cond.Status == metav1.ConditionFalse
+}
+
+// isTestCaseCleanupSucceeded checks if a test case cleanup has already completed successfully.
+func isTestCaseCleanupSucceeded(status testingopenmcpcloudv1alpha1.TestCaseStatus) bool {
+	cond := conditions.GetCondition(status.Conditions, testingopenmcpcloudv1alpha1.TestCaseConditionCleanupCompleted)
+	return cond != nil && cond.Status == metav1.ConditionTrue
 }
 
 // setTestCaseCondition updates or adds a condition to a test case status using the conditions updater

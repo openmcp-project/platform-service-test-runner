@@ -218,6 +218,12 @@ func (o *RunOptions) Run(ctx context.Context) error {
 						Resources: []string{"namespaces", "secrets", "configmaps"},
 						Verbs:     []string{"*"},
 					},
+					// TODO: temporarily grant full access for *.services.open-control-plane.io
+					{
+						APIGroups: []string{"*"},
+						Resources: []string{"*"},
+						Verbs:     []string{"*"},
+					},
 				},
 			},
 		})
@@ -267,6 +273,7 @@ func (o *RunOptions) Run(ctx context.Context) error {
 	testRegistry.RegisterTestCase("createProject", &runner.CreateProjectTest{OnboardingClient: onboardingCluster.Client()})
 	testRegistry.RegisterTestCase("createWorkspace", &runner.CreateWorkspaceTest{OnboardingClient: onboardingCluster.Client()})
 	testRegistry.RegisterTestCase("createControlPlane", &runner.CreateControlPlaneTest{OnboardingClient: onboardingCluster.Client()})
+	testRegistry.RegisterTestCase("createService", &runner.CreateServiceTest{OnboardingClient: onboardingCluster.Client()})
 
 	// setup TestRun reconciler
 	if err := e2etestrun.NewE2ETestRunReconciler(o.PlatformCluster, mgr.GetEventRecorder(e2etestrun.ControllerName), identity, testRegistry).SetupWithManager(mgr); err != nil {

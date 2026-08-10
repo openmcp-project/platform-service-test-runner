@@ -27,6 +27,8 @@ type CreateControlPlaneTest struct {
 	OnboardingClient client.Client
 }
 
+func (c *CreateControlPlaneTest) StatusName(_ Config) string { return createControlPlane }
+
 // Run creates a ControlPlane in the workspace created by the createWorkspace test case, with the given configuration, and waits until it's ready.
 // It returns the ControlPlane name and namespace as exports for other test cases to use.
 func (c *CreateControlPlaneTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, config Config) (Exports, DebugInfo, error) {

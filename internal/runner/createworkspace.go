@@ -28,6 +28,8 @@ type CreateWorkspaceTest struct {
 	OnboardingClient client.Client
 }
 
+func (c *CreateWorkspaceTest) StatusName(_ Config) string { return createWorkspace }
+
 // Run creates a workspace in the project created by the createProject test case, with the given configuration, and waits until it's ready.
 // It returns the workspace name, namespace, and status namespace as exports for other test cases to use.
 func (c *CreateWorkspaceTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, config Config) (Exports, DebugInfo, error) {
