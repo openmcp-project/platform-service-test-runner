@@ -42,6 +42,7 @@ spec:
             description: spec defines the desired state of E2ETestRun
             properties:
               runner:
+                description: Runner defines the test runner image version and arguments.
                 properties:
                   args:
                     items:
@@ -54,6 +55,8 @@ spec:
                 type: object
               testcases:
                 items:
+                  description: TestCase defines a single test case with its name and
+                    optional configuration.
                   properties:
                     config:
                       x-kubernetes-preserve-unknown-fields: true
@@ -72,6 +75,8 @@ spec:
             properties:
               testCases:
                 items:
+                  description: TestCaseStatus holds the status of a single test case
+                    execution.
                   properties:
                     conditions:
                       items:
