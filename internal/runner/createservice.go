@@ -33,6 +33,7 @@ type JSONPathAssertion struct {
 	Value string `json:"value"`
 }
 
+// CreateServiceTest implements the TestCase interface for creating an arbitrary ServiceProvider resource.
 type CreateServiceTest struct {
 	OnboardingClient client.Client
 }
@@ -54,6 +55,8 @@ func (c *CreateServiceTest) StatusName(config Config) string {
 // Run applies an arbitrary ServiceProvider resource derived from the manifest in config to the
 // onboarding cluster in the namespace of the ControlPlane created by createControlPlane. It then
 // polls until all JSONPath assertions pass.
+//
+//nolint:gocyclo
 func (c *CreateServiceTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, config Config) (Exports, DebugInfo, error) {
 	ctxTimeout := GetContextTimeoutOrDefault(config)
 	log := logging.FromContextOrPanic(ctx).WithName(createService)

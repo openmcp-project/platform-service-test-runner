@@ -27,8 +27,13 @@ const (
 	defaultPollTimeout    = 10 * time.Minute
 )
 
+// Config holds the key-value configuration for a test case.
 type Config map[string]interface{}
+
+// Exports holds the key-value outputs produced by a test case for downstream test cases to consume.
 type Exports map[string]interface{}
+
+// DebugInfo holds additional diagnostic key-value pairs produced by a test case.
 type DebugInfo map[string]interface{}
 
 // TestCase defines the interface for a modular E2E test case. Each test case must implement Run and Cleanup.
@@ -101,6 +106,7 @@ func WaitForDeletion[T client.Object](
 	})
 }
 
+// GetContextTimeoutOrDefault returns the context timeout from config, or the default if not set or unparseable.
 func GetContextTimeoutOrDefault(config Config) time.Duration {
 	contextTimeout := defaultContextTimeout
 	contextTimeoutConfig := utils.GetAsString(config, configContextTimeout)
@@ -112,6 +118,7 @@ func GetContextTimeoutOrDefault(config Config) time.Duration {
 	return contextTimeout
 }
 
+// GetPollIntervalOrDefault returns the poll interval from config, or the default if not set or unparseable.
 func GetPollIntervalOrDefault(config Config) time.Duration {
 	pollInterval := defaultPollInterval
 	pollIntervalConfig := utils.GetAsString(config, configPollInterval)
@@ -123,6 +130,7 @@ func GetPollIntervalOrDefault(config Config) time.Duration {
 	return pollInterval
 }
 
+// GetPollTimeoutOrDefault returns the poll timeout from config, or the default if not set or unparseable.
 func GetPollTimeoutOrDefault(config Config) time.Duration {
 	pollTimeout := defaultPollTimeout
 	pollTimeoutConfig := utils.GetAsString(config, configPollTimeout)
