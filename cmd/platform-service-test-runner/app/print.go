@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// PrintRaw prints the raw shared options as YAML to the given command's output.
 func (o *SharedOptions) PrintRaw(cmd *cobra.Command) {
 	data, err := yaml.Marshal(o.RawSharedOptions)
 	if err != nil {
@@ -17,6 +18,7 @@ func (o *SharedOptions) PrintRaw(cmd *cobra.Command) {
 	cmd.Print(string(data))
 }
 
+// PrintCompleted prints the completed shared options as YAML to the given command's output.
 func (o *SharedOptions) PrintCompleted(cmd *cobra.Command) {
 	raw := map[string]any{
 		"platformCluster": o.PlatformCluster.APIServerEndpoint(),
@@ -30,8 +32,10 @@ func (o *SharedOptions) PrintCompleted(cmd *cobra.Command) {
 	cmd.Print(string(data))
 }
 
-func (o *InitOptions) PrintRaw(cmd *cobra.Command) {}
+// PrintRaw prints the raw init-specific options to the given command's output.
+func (o *InitOptions) PrintRaw(_ *cobra.Command) {}
 
+// PrintRawOptions prints all raw options (shared and init-specific) to the given command's output.
 func (o *InitOptions) PrintRawOptions(cmd *cobra.Command) {
 	cmd.Println("########## RAW OPTIONS START ##########")
 	o.SharedOptions.PrintRaw(cmd)
@@ -39,8 +43,10 @@ func (o *InitOptions) PrintRawOptions(cmd *cobra.Command) {
 	cmd.Println("########## RAW OPTIONS END ##########")
 }
 
-func (o *InitOptions) PrintCompleted(cmd *cobra.Command) {}
+// PrintCompleted prints the completed init-specific options to the given command's output.
+func (o *InitOptions) PrintCompleted(_ *cobra.Command) {}
 
+// PrintCompletedOptions prints all completed options (shared and init-specific) to the given command's output.
 func (o *InitOptions) PrintCompletedOptions(cmd *cobra.Command) {
 	cmd.Println("########## COMPLETED OPTIONS START ##########")
 	o.SharedOptions.PrintCompleted(cmd)
@@ -48,6 +54,7 @@ func (o *InitOptions) PrintCompletedOptions(cmd *cobra.Command) {
 	cmd.Println("########## COMPLETED OPTIONS END ##########")
 }
 
+// PrintRaw prints the raw run-specific options as YAML to the given command's output.
 func (o *RunOptions) PrintRaw(cmd *cobra.Command) {
 	data, err := yaml.Marshal(o.RawRunOptions)
 	if err != nil {
@@ -57,6 +64,7 @@ func (o *RunOptions) PrintRaw(cmd *cobra.Command) {
 	cmd.Print(string(data))
 }
 
+// PrintRawOptions prints all raw options (shared and run-specific) to the given command's output.
 func (o *RunOptions) PrintRawOptions(cmd *cobra.Command) {
 	cmd.Println("########## RAW OPTIONS START ##########")
 	o.SharedOptions.PrintRaw(cmd)
@@ -64,6 +72,7 @@ func (o *RunOptions) PrintRawOptions(cmd *cobra.Command) {
 	cmd.Println("########## RAW OPTIONS END ##########")
 }
 
+// PrintCompleted prints the completed run-specific options as YAML to the given command's output.
 func (o *RunOptions) PrintCompleted(cmd *cobra.Command) {
 	raw := map[string]any{
 		// TODO add options or remove
@@ -76,6 +85,7 @@ func (o *RunOptions) PrintCompleted(cmd *cobra.Command) {
 	cmd.Print(string(data))
 }
 
+// PrintCompletedOptions prints all completed options (shared and run-specific) to the given command's output.
 func (o *RunOptions) PrintCompletedOptions(cmd *cobra.Command) {
 	cmd.Println("########## COMPLETED OPTIONS START ##########")
 	o.SharedOptions.PrintCompleted(cmd)

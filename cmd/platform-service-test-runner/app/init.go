@@ -22,6 +22,7 @@ import (
 	providerscheme "github.com/openmcp-project/platform-service-test-runner/api/install"
 )
 
+// NewInitCommand creates the cobra command for the init subcommand.
 func NewInitCommand(so *SharedOptions) *cobra.Command {
 	opts := &InitOptions{
 		SharedOptions: so,
@@ -29,7 +30,7 @@ func NewInitCommand(so *SharedOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Initialize Platform Service Test Runner",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
 			opts.PrintRawOptions(cmd)
 			if err := opts.Complete(cmd.Context()); err != nil {
 				panic(fmt.Errorf("error completing options: %w", err))
@@ -48,16 +49,19 @@ func NewInitCommand(so *SharedOptions) *cobra.Command {
 	return cmd
 }
 
+// InitOptions holds options for the init subcommand.
 type InitOptions struct {
 	*SharedOptions
 }
 
+// Complete validates and resolves the init options.
 func (o *InitOptions) Complete(_ context.Context) error {
 	return o.SharedOptions.Complete()
 }
 
+// Run executes the init logic: creates cluster access, applies CRDs, and sets up required resources.
 func (o *InitOptions) Run(ctx context.Context) error {
-	if err := o.PlatformCluster.InitializeClient(providerscheme.InstallOperatorAPIsPlatform(runtime.NewScheme())); err != nil {
+	if err := o.PlatformCluster.InitializeClient(providerscheme.OperatorAPIsPlatform(runtime.NewScheme())); err != nil {
 		return err
 	}
 
@@ -72,7 +76,7 @@ func (o *InitOptions) Run(ctx context.Context) error {
 		WithTimeout(30 * time.Minute)
 
 	onboardingCluster, err := clusterAccessManager.CreateAndWaitForCluster(ctx, "onboarding-init", clustersv1alpha1.PURPOSE_ONBOARDING,
-		providerscheme.InstallOperatorAPIsOnboarding(runtime.NewScheme()), []clustersv1alpha1.PermissionsRequest{
+		providerscheme.OperatorAPIsOnboarding(runtime.NewScheme()), []clustersv1alpha1.PermissionsRequest{
 			{
 				Rules: []rbacv1.PolicyRule{
 					// openmcp-operator CRDs (ControlPlane, etc.)

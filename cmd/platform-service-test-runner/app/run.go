@@ -34,6 +34,7 @@ import (
 
 var setupLog logging.Logger
 
+// NewRunCommand creates the cobra command for the run subcommand.
 func NewRunCommand(so *SharedOptions) *cobra.Command {
 	opts := &RunOptions{
 		SharedOptions: so,
@@ -41,7 +42,7 @@ func NewRunCommand(so *SharedOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Run the Platform Service Test Runner",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
 			opts.PrintRawOptions(cmd)
 			if err := opts.Complete(cmd.Context()); err != nil {
 				panic(fmt.Errorf("error completing options: %w", err))
@@ -61,6 +62,7 @@ func NewRunCommand(so *SharedOptions) *cobra.Command {
 	return cmd
 }
 
+// RawRunOptions holds the raw flag values for the run subcommand.
 type RawRunOptions struct {
 	// kubebuilder default flags
 	MetricsAddr          string `json:"metrics-bind-address"`
@@ -74,6 +76,7 @@ type RawRunOptions struct {
 	EnableHTTP2          bool   `json:"enable-http2"`
 }
 
+// RunOptions holds options for the run subcommand, combining shared and run-specific flags with resolved runtime state.
 type RunOptions struct {
 	*SharedOptions
 	RawRunOptions
@@ -85,6 +88,7 @@ type RunOptions struct {
 	ProviderNamespace    string
 }
 
+// AddFlags registers all flags for the run subcommand on the given command.
 func (o *RunOptions) AddFlags(cmd *cobra.Command) {
 	// kubebuilder default flags
 	cmd.Flags().StringVar(&o.MetricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
@@ -98,7 +102,8 @@ func (o *RunOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&o.EnableHTTP2, "enable-http2", false, "If set, HTTP/2 will be enabled for the metrics and webhook servers")
 }
 
-func (o *RunOptions) Complete(ctx context.Context) error {
+// Complete validates and resolves the run options, configuring TLS and metrics server settings.
+func (o *RunOptions) Complete(_ context.Context) error {
 	if err := o.SharedOptions.Complete(); err != nil {
 		return err
 	}
@@ -172,8 +177,11 @@ func (o *RunOptions) Complete(ctx context.Context) error {
 	return nil
 }
 
+// Run starts the controller manager and blocks until it exits.
+//
+//nolint:gocyclo
 func (o *RunOptions) Run(ctx context.Context) error {
-	if err := o.PlatformCluster.InitializeClient(providerscheme.InstallOperatorAPIsPlatform(runtime.NewScheme())); err != nil {
+	if err := o.PlatformCluster.InitializeClient(providerscheme.OperatorAPIsPlatform(runtime.NewScheme())); err != nil {
 		return err
 	}
 
@@ -191,7 +199,7 @@ func (o *RunOptions) Run(ctx context.Context) error {
 		WithTimeout(30 * time.Minute)
 
 	onboardingCluster, err := clusterAccessManager.CreateAndWaitForCluster(ctx, "onboarding-run", clustersv1alpha1.PURPOSE_ONBOARDING,
-		providerscheme.InstallOperatorAPIsOnboarding(runtime.NewScheme()), []clustersv1alpha1.PermissionsRequest{
+		providerscheme.OperatorAPIsOnboarding(runtime.NewScheme()), []clustersv1alpha1.PermissionsRequest{
 			{
 				Rules: []rbacv1.PolicyRule{
 					// openmcp-operator CRDs (ControlPlane, etc.)
