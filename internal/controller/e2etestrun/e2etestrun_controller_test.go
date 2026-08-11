@@ -20,7 +20,7 @@ const (
 	e2eTestReconciler = "e2etestrun-reconciler"
 )
 
-var platformScheme = install.InstallOperatorAPIsPlatform(runtime.NewScheme())
+var platformScheme = install.OperatorAPIsPlatform(runtime.NewScheme())
 
 type testEnvironment struct {
 	env        *testutils.ComplexEnvironment

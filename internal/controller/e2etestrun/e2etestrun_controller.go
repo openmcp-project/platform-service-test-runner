@@ -21,12 +21,17 @@ import (
 )
 
 const (
-	ControllerName   = "E2ETestRunController"
+	// ControllerName is the name of the E2ETestRun controller.
+	ControllerName = "E2ETestRunController"
+	// TestStatusPassed indicates a test case run completed successfully.
 	TestStatusPassed = "Passed"
+	// TestStatusFailed indicates a test case run did not complete successfully.
 	TestStatusFailed = "Failed"
 )
 
 // E2ETestRunReconciler reconciles a E2ETestRun object
+//
+//nolint:revive
 type E2ETestRunReconciler struct {
 	platformCluster *clusters.Cluster
 	eventRecorder   events.EventRecorder
@@ -34,6 +39,7 @@ type E2ETestRunReconciler struct {
 	testRegistry    *runner.TestRegistry
 }
 
+// NewE2ETestRunReconciler creates a new E2ETestRunReconciler with the given dependencies.
 func NewE2ETestRunReconciler(platformCluster *clusters.Cluster, recorder events.EventRecorder, identity string, testRegistry *runner.TestRegistry) *E2ETestRunReconciler {
 	return &E2ETestRunReconciler{
 		platformCluster: platformCluster,
@@ -47,6 +53,7 @@ func NewE2ETestRunReconciler(platformCluster *clusters.Cluster, recorder events.
 // +kubebuilder:rbac:groups=testing.openmcp.cloud.test-runner.openmcp.cloud,resources=e2etestruns/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=testing.openmcp.cloud.test-runner.openmcp.cloud,resources=e2etestruns/finalizers,verbs=update
 
+// Reconcile runs all test cases defined in the E2ETestRun and updates its status accordingly.
 func (r *E2ETestRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logging.FromContextOrPanic(ctx).WithName(ControllerName)
 
@@ -70,6 +77,8 @@ func (r *E2ETestRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 }
 
 // runTestCases executes all test cases in the test run
+//
+//nolint:gocyclo
 func (r *E2ETestRunReconciler) runTestCases(ctx context.Context, log logging.Logger, run *testingopenmcpcloudv1alpha1.E2ETestRun) error {
 	for _, testCaseSpec := range run.Spec.TestCases {
 		testCase, found := r.testRegistry.GetTestCase(testCaseSpec.Name)
@@ -215,7 +224,7 @@ func (r *E2ETestRunReconciler) updateStatusAfterRun(
 	exports runner.Exports,
 	debugIngo runner.DebugInfo,
 	err error) error {
-	tcStatus, statusErr := r.toApiTestCaseStatus(statusName, status, exports, debugIngo, err)
+	tcStatus, statusErr := r.toAPITestCaseStatus(statusName, status, exports, debugIngo, err)
 	if statusErr != nil {
 		log.Error(err, "error creating test case status", "testName", statusName)
 		return statusErr
@@ -229,15 +238,15 @@ func (r *E2ETestRunReconciler) updateStatusAfterRun(
 	return err
 }
 
-// toApiTestCaseStatus is a helper function to create a TestCaseStatus with proper JSON marshaling
-func (r *E2ETestRunReconciler) toApiTestCaseStatus(name, status string, exports, debugInfo map[string]interface{}, err error) (testingopenmcpcloudv1alpha1.TestCaseStatus, error) {
+// toAPITestCaseStatus is a helper function to create a TestCaseStatus with proper JSON marshaling
+func (r *E2ETestRunReconciler) toAPITestCaseStatus(name, status string, exports, debugInfo map[string]interface{}, err error) (testingopenmcpcloudv1alpha1.TestCaseStatus, error) {
 	expJSON, marshallErr := utils.MarshalToRawMessage(exports)
 	if marshallErr != nil {
-		return testingopenmcpcloudv1alpha1.TestCaseStatus{}, err
+		return testingopenmcpcloudv1alpha1.TestCaseStatus{}, marshallErr
 	}
 	diJSON, marshallErr := utils.MarshalToRawMessage(debugInfo)
 	if marshallErr != nil {
-		return testingopenmcpcloudv1alpha1.TestCaseStatus{}, err
+		return testingopenmcpcloudv1alpha1.TestCaseStatus{}, marshallErr
 	}
 
 	var condStatus metav1.ConditionStatus
