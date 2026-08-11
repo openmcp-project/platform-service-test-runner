@@ -19,7 +19,7 @@ const (
 	platformCluster = "platform"
 )
 
-var platformScheme = install.InstallOperatorAPIsPlatform(runtime.NewScheme())
+var platformScheme = install.OperatorAPIsPlatform(runtime.NewScheme())
 
 func e2eTestSpecTestSetup(testDirPathSegments ...string) *testutils.Environment {
 	env := testutils.NewEnvironmentBuilder().

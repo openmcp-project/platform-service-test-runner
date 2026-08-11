@@ -23,7 +23,6 @@ const (
 
 	errNoSchedule      = "no schedule defined in the specification, skipping execution"
 	errInvalidSchedule = "invalid schedule format"
-	errNoTestCases     = "no test cases defined in the specification"
 )
 
 // E2ETestSpecificationReconciler reconciles a E2ETestSpecification object
@@ -32,6 +31,7 @@ type E2ETestSpecificationReconciler struct {
 	Version         string
 }
 
+// NewE2ETestSpecificationReconciler creates a new E2ETestSpecificationReconciler with the given cluster and version.
 func NewE2ETestSpecificationReconciler(platformCluster *clusters.Cluster, version string) *E2ETestSpecificationReconciler {
 	return &E2ETestSpecificationReconciler{
 		PlatformCluster: platformCluster,
@@ -45,6 +45,7 @@ var _ reconcile.Reconciler = &E2ETestSpecificationReconciler{}
 // +kubebuilder:rbac:groups=testing.openmcp.cloud.test-runner.openmcp.cloud,resources=e2etestspecifications/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=testing.openmcp.cloud.test-runner.openmcp.cloud,resources=e2etestspecifications/finalizers,verbs=update
 
+// Reconcile evaluates the E2ETestSpecification schedule and creates an E2ETestRun when it is time to execute.
 func (r *E2ETestSpecificationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logging.FromContextOrPanic(ctx).WithName(controllerName)
 

@@ -24,10 +24,12 @@ const (
 	keyWorkspaceStatusNamespace = "workspace.status.namespace"
 )
 
+// CreateWorkspaceTest implements the TestCase interface for creating a Workspace resource.
 type CreateWorkspaceTest struct {
 	OnboardingClient client.Client
 }
 
+// StatusName returns the fixed status name for this test case.
 func (c *CreateWorkspaceTest) StatusName(_ Config) string { return createWorkspace }
 
 // Run creates a workspace in the project created by the createProject test case, with the given configuration, and waits until it's ready.

@@ -6,6 +6,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// TestCase defines a single test case with its name and optional configuration.
 type TestCase struct {
 	Name string `json:"name"`
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -23,6 +24,7 @@ type E2ETestSpecificationSpec struct {
 	TestCases []TestCase `json:"testCases"`
 }
 
+// E2ETestSpecificationStatus defines the observed state of E2ETestSpecification.
 type E2ETestSpecificationStatus struct {
 	// +patchMergeKey=type
 	// +patchStrategy=merge

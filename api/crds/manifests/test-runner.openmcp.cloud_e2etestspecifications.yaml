@@ -49,6 +49,8 @@ spec:
                 description: TestCases is a list of test cases to be executed in order.
                   Each test case includes a name and optional configuration.
                 items:
+                  description: TestCase defines a single test case with its name and
+                    optional configuration.
                   properties:
                     config:
                       x-kubernetes-preserve-unknown-fields: true

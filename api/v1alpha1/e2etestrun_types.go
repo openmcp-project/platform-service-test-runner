@@ -6,6 +6,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// Runner defines the test runner image version and arguments.
 type Runner struct {
 	Version string   `json:"version"`
 	Args    []string `json:"args,omitempty"`
@@ -37,6 +38,7 @@ const (
 	TestCaseReasonCleanupSuccess = "CleanupSuccess"
 )
 
+// TestCaseStatus holds the status of a single test case execution.
 type TestCaseStatus struct {
 	Name string `json:"name"`
 	// +kubebuilder:validation:Schemaless

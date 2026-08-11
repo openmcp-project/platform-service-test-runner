@@ -12,6 +12,7 @@ import (
 	"github.com/openmcp-project/controller-utils/pkg/logging"
 )
 
+// NewPlatformServiceTestRunnerCommand creates the root cobra command for the platform-service-test-runner.
 func NewPlatformServiceTestRunnerCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "platform-service-test-runner",
@@ -31,12 +32,14 @@ func NewPlatformServiceTestRunnerCommand() *cobra.Command {
 	return cmd
 }
 
+// RawSharedOptions holds the raw flag values for options shared across subcommands.
 type RawSharedOptions struct {
 	Environment  string `json:"environment"`
 	ProviderName string `json:"provider-name"`
 	DryRun       bool   `json:"dry-run"`
 }
 
+// SharedOptions holds options common to all subcommands, combining raw flag values with resolved runtime state.
 type SharedOptions struct {
 	*RawSharedOptions
 	PlatformCluster *clusters.Cluster
@@ -45,6 +48,7 @@ type SharedOptions struct {
 	Log logging.Logger
 }
 
+// AddPersistentFlags registers all persistent flags for the shared options on the given command.
 func (o *SharedOptions) AddPersistentFlags(cmd *cobra.Command) {
 	// logging
 	logging.InitFlags(cmd.PersistentFlags())
@@ -57,6 +61,7 @@ func (o *SharedOptions) AddPersistentFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolVar(&o.DryRun, "dry-run", false, "If set, the command aborts after evaluation of the given flags.")
 }
 
+// Complete validates and resolves the shared options, building the logger and initialising the platform cluster REST config.
 func (o *SharedOptions) Complete() error {
 	if o.Environment == "" {
 		return fmt.Errorf("environment must not be empty")

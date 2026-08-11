@@ -23,10 +23,12 @@ const (
 	keyControlPlaneNamespace = "controlplane.namespace"
 )
 
+// CreateControlPlaneTest implements the TestCase interface for creating a ControlPlane resource.
 type CreateControlPlaneTest struct {
 	OnboardingClient client.Client
 }
 
+// StatusName returns the fixed status name for this test case.
 func (c *CreateControlPlaneTest) StatusName(_ Config) string { return createControlPlane }
 
 // Run creates a ControlPlane in the workspace created by the createWorkspace test case, with the given configuration, and waits until it's ready.

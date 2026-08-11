@@ -27,10 +27,12 @@ const (
 	labelChargingTarget       = "openmcp.cloud.sap/charging-target"
 )
 
+// CreateProjectTest implements the TestCase interface for creating a Project resource.
 type CreateProjectTest struct {
 	OnboardingClient client.Client
 }
 
+// StatusName returns the fixed status name for this test case.
 func (c *CreateProjectTest) StatusName(_ Config) string { return createProject }
 
 // Run creates a project with the given configuration and waits until it's ready.
