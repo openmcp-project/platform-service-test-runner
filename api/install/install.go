@@ -12,7 +12,8 @@ import (
 	"github.com/openmcp-project/platform-service-test-runner/api/v1alpha1"
 )
 
-func InstallOperatorAPIsPlatform(scheme *runtime.Scheme) *runtime.Scheme {
+// OperatorAPIsPlatform registers all platform-side API types into the given scheme.
+func OperatorAPIsPlatform(scheme *runtime.Scheme) *runtime.Scheme {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(apiextv1.AddToScheme(scheme))
 	utilruntime.Must(clustersv1alpha1.AddToScheme(scheme))
@@ -20,7 +21,8 @@ func InstallOperatorAPIsPlatform(scheme *runtime.Scheme) *runtime.Scheme {
 	return scheme
 }
 
-func InstallOperatorAPIsOnboarding(scheme *runtime.Scheme) *runtime.Scheme {
+// OperatorAPIsOnboarding registers all onboarding-side API types into the given scheme.
+func OperatorAPIsOnboarding(scheme *runtime.Scheme) *runtime.Scheme {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(apiextv1.AddToScheme(scheme))
 	utilruntime.Must(pwv1alpha1.AddToScheme(scheme))

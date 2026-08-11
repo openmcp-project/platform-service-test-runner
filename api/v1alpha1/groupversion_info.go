@@ -23,6 +23,7 @@ var (
 	AddToScheme = SchemeBuilder.AddToScheme
 )
 
+// RegisterToSchemeBuilder registers the given types with the package-level SchemeBuilder.
 func RegisterToSchemeBuilder(types ...runtime.Object) {
 	SchemeBuilder.Register(func(scheme *runtime.Scheme) error {
 		scheme.AddKnownTypes(GroupVersion, types...)
