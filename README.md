@@ -9,16 +9,16 @@ Platform-service-test-runner allows to define and run in-cluster tests on the op
 ## Architecture
 
 ### E2ETestSpecification
-The `E2ETestSpecification` custom resource defines a set of test cases and its configuration. It creates an `E2ETestRun` resource to execute the tests defined in the specification. 
+The `E2ETestSpecification` custom resource defines a set of test cases and its configuration. It creates an `E2ETestRun` resource to execute the tests defined in the specification.
 ```yaml
 apiVersion: test-runner.openmcp.cloud/v1alpha1
 kind: E2ETestSpecification
 metadata:
-  name: test-spec
+  name: test-full-suite
 spec:
-  # optional cron schedule for periodic test execution. 
+  # optional cron schedule for periodic test execution.
   # Defaults to @daily if not specified.
-  schedule: "0 0 * * *" 
+  schedule: "0 0 * * *"
   testCases:
     - name: createProject
       config: {}
@@ -26,6 +26,32 @@ spec:
       config: {}
     - name: createControlPlane
       config: {}
+    - name: createService
+      config:
+        assertions:
+          - path: .status.phase
+            value: Ready
+        manifest: |
+          apiVersion: flux.services.open-control-plane.io/v1alpha1
+          kind: Flux
+          spec:
+            version: "2.8.3"
+    - name: createService
+      config:
+        assertions:
+          - path: .status.phase
+            value: Ready
+        manifest: |
+          apiVersion: crossplane.services.open-control-plane.io/v1alpha1
+          kind: Crossplane
+          spec:
+            version: "1.20.5"
+            providers:
+              - name: provider-kubernetes
+                version: v1.3.0
+            functions:
+              - name: function-patch-and-transform
+                version: v0.8.0
 ```
 
 #### Test case configuration
@@ -37,6 +63,8 @@ Currently, the following configuration keys exist:
 | --- | --- | --- |
 | `chargingTarget` | `createProject` | Specifies the charging target for the project. Value should be a UUID. |
 | `chargingTargetType` | `createProject` | Specifies the type of the charging target for the project. |
+| `manifest` | `createService` | Required. Inline YAML manifest for the ServiceProvider API resource to apply (e.g. a `Flux` or `Crossplane` resource). The `name` and `namespace` are set automatically from the `createControlPlane` exports. |
+| `assertions` | `createService` | Optional list of JSONPath assertions to wait for on the created resource. Each entry has a `path` (JSONPath expression, e.g. `.status.phase`) and an expected `value`. The test case polls until all assertions pass. |
 | `identity` | All test cases | Automatically added by the controller, contains the username retrieved via `authenticationv1.SelfSubjectReview{}`. |
 | `pollInterval` | All test cases | Polling interval for waiting for conditions. Duration string (e.g., "30s"). Defaults to 10 seconds if not specified. |
 | `pollTimeout` | All test cases | Polling timeout for waiting for conditions. Duration string (e.g., "5m"). Defaults to 5 minutes if not specified. |
@@ -44,80 +72,134 @@ Currently, the following configuration keys exist:
 
 
 ### E2ETestRun
-The `E2ETestRun` custom resource represents a test execution. 
+The `E2ETestRun` custom resource represents a test execution.
 It is created by the `e2etestspecification_controller.go` controller when an `E2ETestSpecification` is created and a new test run needs to be started (based on the schedule).
 It contains the status of the test execution, including which test cases have been executed, their results, and any exports they produced for subsequent test cases.
-This resource is not deleted after the test execution, but remains in the cluster for inspection and debugging purposes. 
+This resource is not deleted after the test execution, but remains in the cluster for inspection and debugging purposes.
 Example:
 ```yaml
 apiVersion: test-runner.openmcp.cloud/v1alpha1
 kind: E2ETestRun
 metadata:
   labels:
-    test-runner.openmcp.cloud/specification: test-create-p-w-m
-  name: run-1772628360009
+    test-runner.openmcp.cloud/specification: test-full-suite # referencing E2ETestSpecification
+  name: run-1786536360005
 spec:
   runner:
-    version: 0.0.1-dev
+    version: v1.2.0
   testcases:
-    - config:
-        chargingTarget: 12345678-1234-1234-1234-123456789012
-        chargingTargetType: btp
-      name: createProject
+    - name: createProject
     - name: createWorkspace
+    - name: createControlPlane
     - config:
-        pollInterval: 20s
-        pollTimeout: 15m
-      name: createControlPlane
-      
+        assertions:
+          - path: .status.phase
+            value: Ready
+        manifest: |
+          apiVersion: flux.services.open-control-plane.io/v1alpha1
+          kind: Flux
+          spec:
+            version: "2.8.3"
+      name: createService
+    - config:
+        assertions:
+          - path: .status.phase
+            value: Ready
+        manifest: |
+          apiVersion: crossplane.services.open-control-plane.io/v1alpha1
+          kind: Crossplane
+          spec:
+            version: "1.20.5"
+            providers:
+              - name: provider-kubernetes
+                version: v1.3.0
+            functions:
+              - name: function-patch-and-transform
+                version: v0.8.0
+      name: createService
+
 status:
   testCases:
     - conditions:
-        - lastTransitionTime: "2026-03-04T13:01:04Z"
+        - lastTransitionTime: "2026-08-12T12:13:50Z"
           message: Test case cleanup completed successfully
           reason: CleanupSuccess
           status: "True"
           type: CleanupCompleted
-        - lastTransitionTime: "2026-03-04T12:59:54Z"
+        - lastTransitionTime: "2026-08-12T12:08:50Z"
           message: Test case run completed successfully
           reason: TestPassed
           status: "True"
           type: RunCompleted
       exports:
-        project.name: run-1772628360009-p
-        project.status.namespace: project-run-1772628360009-p
+        project.name: run-1786536360005-p
+        project.status.namespace: project-run-1786536360005-p
       name: createProject
     - conditions:
-        - lastTransitionTime: "2026-03-04T13:00:54Z"
+        - lastTransitionTime: "2026-08-12T12:13:30Z"
           message: Test case cleanup completed successfully
           reason: CleanupSuccess
           status: "True"
           type: CleanupCompleted
-        - lastTransitionTime: "2026-03-04T13:00:04Z"
+        - lastTransitionTime: "2026-08-12T12:09:00Z"
           message: Test case run completed successfully
           reason: TestPassed
           status: "True"
           type: RunCompleted
       exports:
-        workspace.name: run-1772628360009-ws
-        workspace.namespace: project-run-1772628360009-p
-        workspace.status.namespace: project-run-1772628360009-p--ws-run-1772628360009-ws
+        workspace.name: run-1786536360005-ws
+        workspace.namespace: project-run-1786536360005-p
+        workspace.status.namespace: project-run-1786536360005-p--ws-run-1786536360005-ws
       name: createWorkspace
     - conditions:
-        - lastTransitionTime: "2026-03-04T13:00:44Z"
+        - lastTransitionTime: "2026-08-12T12:13:10Z"
           message: Test case cleanup completed successfully
           reason: CleanupSuccess
           status: "True"
           type: CleanupCompleted
-        - lastTransitionTime: "2026-03-04T13:00:14Z"
+        - lastTransitionTime: "2026-08-12T12:09:10Z"
           message: Test case run completed successfully
           reason: TestPassed
           status: "True"
           type: RunCompleted
       exports:
-        mcp.name: run-1772628360009-cp
-        mcp.namespace: project-run-1772628360009-p--ws-run-1772628360009-ws
+        controlplane.name: run-1786536360005-cp
+        controlplane.namespace: project-run-1786536360005-p--ws-run-1786536360005-ws
       name: createControlPlane
+    - conditions:
+        - lastTransitionTime: "2026-08-12T12:12:50Z"
+          message: Test case cleanup completed successfully
+          reason: CleanupSuccess
+          status: "True"
+          type: CleanupCompleted
+        - lastTransitionTime: "2026-08-12T12:10:30Z"
+          message: Test case run completed successfully
+          reason: TestPassed
+          status: "True"
+          type: RunCompleted
+      exports:
+        service.apiVersion: flux.services.open-control-plane.io/v1alpha1
+        service.kind: Flux
+        service.name: run-1786536360005-cp
+        service.namespace: project-run-1786536360005-p--ws-run-1786536360005-ws
+      name: createService/Flux
+    - conditions:
+        - lastTransitionTime: "2026-08-12T12:12:30Z"
+          message: Test case cleanup completed successfully
+          reason: CleanupSuccess
+          status: "True"
+          type: CleanupCompleted
+        - lastTransitionTime: "2026-08-12T12:11:20Z"
+          message: Test case run completed successfully
+          reason: TestPassed
+          status: "True"
+          type: RunCompleted
+      exports:
+        service.apiVersion: crossplane.services.open-control-plane.io/v1alpha1
+        service.kind: Crossplane
+        service.name: run-1786536360005-cp
+        service.namespace: project-run-1786536360005-p--ws-run-1786536360005-ws
+      name: createService/Crossplane
 ```
 
 ## Implementing New Test Cases
@@ -128,12 +210,14 @@ All test cases must implement the `TestCase` interface defined in `internal/runn
 
 ```go
 type TestCase interface {
+  StatusName(config Config) string
   Run(ctx context.Context, testRun *v1alpha1.E2ETestRun, config Config) (Exports, DebugInfo, error)
   Cleanup(ctx context.Context, testRun *v1alpha1.E2ETestRun, config Config) error
 }
 ```
 
-- **Run**: Executes the test case. Returns exports (key-value pairs for subsequent tests), error details, and error.
+- **StatusName**: Returns the name used to identify this test case's status entry. For test cases that can appear multiple times (e.g. `createService`), incorporate a discriminator from config (e.g. the manifest kind) to produce a unique name like `createService/Flux`.
+- **Run**: Executes the test case. Returns exports (key-value pairs for subsequent tests), debug info, and error.
 - **Cleanup**: Performs cleanup after the test (e.g., delete created resources).
 
 ### Example Implementation
@@ -144,12 +228,19 @@ type MyTestCase struct {
     Client client.Client
 }
 
-func (t *MyTestCase) Run(ctx context.Context, testRun *v1alpha1.E2ETestRun, config Config (Exports, DebugInfo, error) {
-    // Use testRun to access status and exports from previous test cases. 
-    status := util.GetStatus(testRun, "previousTestCaseName")
-    exports := status.Exports
+func (t *MyTestCase) StatusName(config Config) string {
+    return "myTestCase"
+}
+
+func (t *MyTestCase) Run(ctx context.Context, testRun *v1alpha1.E2ETestRun, config Config) (Exports, DebugInfo, error) {
+    // Use testRun to access status and exports from previous test cases.
+    status, found := runner.GetStatus("previousTestCaseName", testRun.Status.TestCases)
+    if !found {
+        return nil, nil, fmt.Errorf("dependent test case has no status")
+    }
+    _ = status.Exports
     // Use config to access test case specific configuration.
-    // By default, the controller is adding a key `identity` to the config, which is its own username retrieved via authenticationv1.SelfSubjectReview{}
+    // By default, the controller adds a key `identity` to the config with its own username.
     // Implement the test logic here, e.g. create resources, wait for conditions, etc.
     // Create own Exports to be used by subsequent test cases.
     return Exports{}, DebugInfo{}, nil
@@ -164,13 +255,14 @@ func (t *MyTestCase) Cleanup(ctx context.Context, testRun *v1alpha1.E2ETestRun, 
 ## Registering Test Cases
 
 Test cases must be registered with the `TestRegistry` to be discoverable by the controller. Use `NewTestRegistry()` to create a registry instance.
-Currently, test cases are registered in `cmd/plaform-service-test-runner/app/run.go`:
+Currently, test cases are registered in `cmd/platform-service-test-runner/app/run.go`:
 ```go
 testRegistry := runner.NewTestRegistry()
 // register test cases here
 testRegistry.RegisterTestCase("createProject", &runner.CreateProjectTest{OnboardingClient: onboardingCluster.Client()})
 testRegistry.RegisterTestCase("createWorkspace", &runner.CreateWorkspaceTest{OnboardingClient: onboardingCluster.Client()})
 testRegistry.RegisterTestCase("createControlPlane", &runner.CreateControlPlaneTest{OnboardingClient: onboardingCluster.Client()})
+testRegistry.RegisterTestCase("createService", &runner.CreateServiceTest{OnboardingClient: onboardingCluster.Client()})
 ```
 
 ## Requirements and Setup
