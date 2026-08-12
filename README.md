@@ -1,10 +1,10 @@
 [![REUSE status](https://api.reuse.software/badge/github.com/openmcp-project/platform-service-test-runner)](https://api.reuse.software/info/github.com/openmcp-project/platform-service-test-runner)
 
-# platform-service-test-runner
+# platform-service-test-runner 🏃
 
 ## About this project
 
-Platform-service-test-runner allows to define and run in-cluster tests on the openMCP clusters. It provides a framework for creating end-to-end tests that can be executed as Kubernetes resources.
+Platform-service-test-runner allows to define and run in-cluster tests on [OpenControlPlane](https://open-control-plane.io/) clusters. It provides a framework for creating end-to-end tests that can be executed as Kubernetes resources.
 
 ## Architecture
 
@@ -267,7 +267,9 @@ testRegistry.RegisterTestCase("createService", &runner.CreateServiceTest{Onboard
 
 ## Requirements and Setup
 
-In combination with the openMCP Operator, this controller can be deployed via a simple k8s resource:
+To spin up a local OpenControlPlane instance, follow the [Quickstart Guide](https://open-control-plane.io/operators/quickstart).
+
+If you already have a running OpenControlPlane instance, deploy the platform service into your platform via:
 
 ```yaml
 apiVersion: openmcp.cloud/v1alpha1
@@ -275,7 +277,7 @@ kind: PlatformService
 metadata:
   name: test-runner
 spec:
-  image: ghcr.io/openmcp-project/images/platform-service-test-runner:v0.0.1
+  image: ghcr.io/openmcp-project/images/platform-service-test-runner:<latest-version>
 ```
 
 To run it locally, run
