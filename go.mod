@@ -1,6 +1,6 @@
 module github.com/openmcp-project/platform-service-test-runner
 
-go 1.27.0
+go 1.27.1
 
 require (
 	github.com/onsi/ginkgo/v2 v2.32.1
