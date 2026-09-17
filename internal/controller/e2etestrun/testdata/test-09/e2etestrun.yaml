@@ -1,0 +1,22 @@
+apiVersion: test-runner.openmcp.cloud/v1alpha1
+kind: E2ETestRun
+metadata:
+  name: test-run-09
+  namespace: test-run-09-ns
+spec:
+  runner:
+    version: "latest"
+  testcases:
+    - name: fakeTest
+status:
+  testCases:
+    - name: fakeTest
+      conditions:
+        - message: "Test case run failed"
+          reason: TestFailed
+          status: "False"
+          type: RunCompleted
+        - message: "Test case cleanup completed successfully"
+          reason: CleanupSuccess
+          status: "True"
+          type: CleanupCompleted

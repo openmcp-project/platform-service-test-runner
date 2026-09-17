@@ -1,0 +1,18 @@
+apiVersion: test-runner.openmcp.cloud/v1alpha1
+kind: E2ETestRun
+metadata:
+  name: test-run-08
+  namespace: test-run-08-ns
+spec:
+  runner:
+    version: "latest"
+  testcases:
+    - name: fakeTest
+status:
+  testCases:
+    - name: fakeTest
+      conditions:
+        - message: "Test case run failed"
+          reason: TestFailed
+          status: "False"
+          type: RunCompleted
