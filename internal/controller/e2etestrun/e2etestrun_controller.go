@@ -73,25 +73,21 @@ func (r *E2ETestRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// Stale cleanup path: for failed runs older than staleAfter, bypass normal cleanup
 	// and attempt cleanup of all test cases regardless of pass/fail status.
-	if r.staleAfter > 0 && isRunFailed(run) {
-		if isRunStale(run, r.staleAfter) {
-			log.Info("Run is stale, triggering stale cleanup", "age", time.Since(run.CreationTimestamp.Time))
-			if err := r.cleanupStaleTestCases(ctx, log, run); err != nil {
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{}, nil
-		}
+	if r.staleAfter > 0 && isRunFailedAndNotCleaned(run) {
 		timeUntilStale := r.staleAfter - time.Since(run.CreationTimestamp.Time)
-		if timeUntilStale <= 0 {
-			// Threshold was crossed between the staleness check and now; requeue promptly
-			// rather than returning a non-positive duration (which disables requeueing).
-			timeUntilStale = time.Second
+		if timeUntilStale > 0 {
+			log.Info("Run is failed but not yet stale, requeueing", "requeueAfter", timeUntilStale)
+			return ctrl.Result{RequeueAfter: timeUntilStale}, nil
 		}
-		log.Info("Run is failed but not yet stale, requeueing", "requeueAfter", timeUntilStale)
-		return ctrl.Result{RequeueAfter: timeUntilStale}, nil
+
+		log.Info("Run is stale, triggering stale cleanup", "age", time.Since(run.CreationTimestamp.Time))
+		if err := r.cleanupStaleTestCases(ctx, log, run); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
 	}
 
-	// Clean up test resources in reverse order
+	// Successful run cleanup path
 	if err := r.cleanupTestCases(ctx, log, run); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -326,24 +322,15 @@ func isTestCaseCleanupSucceeded(status testingopenmcpcloudv1alpha1.TestCaseStatu
 	return cond != nil && cond.Status == metav1.ConditionTrue
 }
 
-// isRunFailed returns true if the run has at least one test case that failed
+// isRunFailedAndNotCleaned returns true if the run has at least one test case that failed
 // (RunCompleted=False) and has not been successfully cleaned up yet.
-func isRunFailed(run *testingopenmcpcloudv1alpha1.E2ETestRun) bool {
+func isRunFailedAndNotCleaned(run *testingopenmcpcloudv1alpha1.E2ETestRun) bool {
 	for _, tc := range run.Status.TestCases {
 		if isTestCaseFailed(tc) && !isTestCaseCleanupSucceeded(tc) {
 			return true
 		}
 	}
 	return false
-}
-
-// isRunStale returns true if the run is failed and has been alive at least staleAfter.
-// Returns false if staleAfter is 0 (feature disabled).
-func isRunStale(run *testingopenmcpcloudv1alpha1.E2ETestRun, staleAfter time.Duration) bool {
-	if staleAfter <= 0 {
-		return false
-	}
-	return isRunFailed(run) && time.Since(run.CreationTimestamp.Time) >= staleAfter
 }
 
 // cleanupStaleTestCases runs cleanup for all test cases in reverse order regardless of
