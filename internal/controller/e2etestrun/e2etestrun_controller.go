@@ -71,15 +71,8 @@ func (r *E2ETestRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 
-	// Clean up test resources in reverse order
-	if err := r.cleanupTestCases(ctx, log, run); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	// Stale cleanup path: trigger cleanup for failed runs older than staleAfter.
-	// On the first failure reconcile, this block is unreachable (runTestCases returns
-	// an error and Reconcile returns early). On subsequent reconciles, runTestCases
-	// short-circuits with nil and we reach here to schedule or execute stale cleanup.
+	// Stale cleanup path: for failed runs older than staleAfter, bypass normal cleanup
+	// and attempt cleanup of all test cases regardless of pass/fail status.
 	if r.staleAfter > 0 && isRunFailed(run) {
 		if isRunStale(run, r.staleAfter) {
 			log.Info("Run is stale, triggering stale cleanup", "age", time.Since(run.CreationTimestamp.Time))
@@ -91,6 +84,11 @@ func (r *E2ETestRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		timeUntilStale := r.staleAfter - time.Since(run.CreationTimestamp.Time)
 		log.Info("Run is failed but not yet stale, requeueing", "requeueAfter", timeUntilStale)
 		return ctrl.Result{RequeueAfter: timeUntilStale}, nil
+	}
+
+	// Clean up test resources in reverse order
+	if err := r.cleanupTestCases(ctx, log, run); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
