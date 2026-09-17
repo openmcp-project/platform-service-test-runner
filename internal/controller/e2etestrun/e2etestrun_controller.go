@@ -82,6 +82,11 @@ func (r *E2ETestRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, nil
 		}
 		timeUntilStale := r.staleAfter - time.Since(run.CreationTimestamp.Time)
+		if timeUntilStale <= 0 {
+			// Threshold was crossed between the staleness check and now; requeue promptly
+			// rather than returning a non-positive duration (which disables requeueing).
+			timeUntilStale = time.Second
+		}
 		log.Info("Run is failed but not yet stale, requeueing", "requeueAfter", timeUntilStale)
 		return ctrl.Result{RequeueAfter: timeUntilStale}, nil
 	}

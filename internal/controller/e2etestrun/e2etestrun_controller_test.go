@@ -230,7 +230,11 @@ var _ = Describe("E2ETestSpecificationReconciler", func() {
 		_ = testEnv.env.ShouldReconcile(e2eTestReconciler, testutils.RequestFromObject(testRun))
 
 		tc, _ := testEnv.reconciler.testRegistry.GetTestCase("fakeTest")
-		Expect(tc.(*fakeTest).cleanupCalled).To(BeFalse())
+		ft := tc.(*fakeTest)
+		// Stale cleanup must run for the still-uncleaned failed case, but skip the
+		// one whose cleanup already succeeded.
+		Expect(ft.cleanedStatusNames).To(ConsistOf("caseFailed"))
+		Expect(ft.cleanedStatusNames).NotTo(ContainElement("caseCleaned"))
 	})
 
 })

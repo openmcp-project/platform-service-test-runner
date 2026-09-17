@@ -8,9 +8,20 @@ spec:
     version: "latest"
   testcases:
     - name: fakeTest
+      config:
+        name: caseFailed
+    - name: fakeTest
+      config:
+        name: caseCleaned
 status:
   testCases:
-    - name: fakeTest
+    - name: caseFailed
+      conditions:
+        - message: "Test case run failed"
+          reason: TestFailed
+          status: "False"
+          type: RunCompleted
+    - name: caseCleaned
       conditions:
         - message: "Test case run failed"
           reason: TestFailed
