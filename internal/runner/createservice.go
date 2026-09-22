@@ -126,6 +126,7 @@ func (c *CreateServiceTest) Run(ctx context.Context, run *v1alpha1.E2ETestRun, c
 }
 
 // Cleanup deletes the service resource created in Run, identified via own exports.
+//nolint:gocyclo
 func (c *CreateServiceTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRun, config Config) error {
 	ctxTimeout := GetContextTimeoutOrDefault(config)
 	log := logging.FromContextOrPanic(ctx).WithName(createService)
