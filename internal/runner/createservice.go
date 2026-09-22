@@ -138,6 +138,11 @@ func (c *CreateServiceTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRu
 		return fmt.Errorf("cannot find '%s' test case status", statusName)
 	}
 
+	if len(ownStatus.Exports) == 0 {
+		log.Info("No exports recorded for service test case, nothing to clean up", "testName", statusName)
+		return nil
+	}
+
 	var exports Exports
 	if err := json.Unmarshal(ownStatus.Exports, &exports); err != nil {
 		return fmt.Errorf("failed to unmarshal exports from %s: %w", createService, err)
