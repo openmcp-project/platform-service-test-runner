@@ -56,7 +56,13 @@ type InitOptions struct {
 
 // Complete validates and resolves the init options.
 func (o *InitOptions) Complete(_ context.Context) error {
-	return o.SharedOptions.Complete()
+	if err := o.SharedOptions.Complete(); err != nil {
+		return err
+	}
+	if os.Getenv(openmcpconst.EnvVariablePodNamespace) == "" {
+		return fmt.Errorf("environment variable '%s' must be set", openmcpconst.EnvVariablePodNamespace)
+	}
+	return nil
 }
 
 // Run executes the init logic: creates cluster access, applies CRDs, and sets up required resources.
