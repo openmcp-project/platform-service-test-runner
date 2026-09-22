@@ -101,7 +101,7 @@ func (o *RunOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&o.MetricsCertName, "metrics-cert-name", "tls.crt", "The name of the metrics server certificate file.")
 	cmd.Flags().StringVar(&o.MetricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
 	cmd.Flags().BoolVar(&o.EnableHTTP2, "enable-http2", false, "If set, HTTP/2 will be enabled for the metrics and webhook servers")
-	cmd.Flags().DurationVar(&o.StaleRunCleanupAfter, "stale-run-cleanup-after", 7*24*time.Hour,
+	cmd.Flags().DurationVar(&o.StaleRunCleanupAfter, "stale-run-cleanup-after", 3*24*time.Hour,
 		"Duration after which a failed E2ETestRun triggers stale cleanup. Set to 0 to disable.")
 }
 

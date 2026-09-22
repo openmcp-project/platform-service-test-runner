@@ -190,7 +190,7 @@ var _ = Describe("E2ETestSpecificationReconciler", func() {
 	})
 
 	It("should requeue when run is failed but not yet stale", func() {
-		testEnv := e2eTestRunTestSetup(true, true, 7*24*time.Hour, "testdata", "test-07")
+		testEnv := e2eTestRunTestSetup(true, true, 3*24*time.Hour, "testdata", "test-07")
 
 		testRun := &v1alpha1.E2ETestRun{}
 		Expect(testEnv.env.Client(platformCluster).Get(testEnv.env.Ctx, client.ObjectKey{Name: "test-run-07", Namespace: "test-run-07-ns"}, testRun)).To(Succeed())
