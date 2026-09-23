@@ -1,6 +1,8 @@
 package e2etestrun
 
 import (
+	"time"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/openmcp-project/controller-utils/pkg/clusters"
@@ -27,7 +29,7 @@ type testEnvironment struct {
 	reconciler *E2ETestRunReconciler
 }
 
-func e2eTestRunTestSetup(runSuccess, cleanupSuccess bool, testDirPathSegments ...string) *testEnvironment {
+func e2eTestRunTestSetup(runSuccess, cleanupSuccess bool, staleAfter time.Duration, testDirPathSegments ...string) *testEnvironment {
 	registry := runner.NewTestRegistry()
 	registry.RegisterTestCase("fakeTest", &fakeTest{runSuccess: runSuccess, cleanupSuccess: cleanupSuccess})
 
@@ -42,6 +44,7 @@ func e2eTestRunTestSetup(runSuccess, cleanupSuccess bool, testDirPathSegments ..
 					nil,
 					"identity",
 					registry,
+					staleAfter,
 				)
 				return reconciler
 			}, platformCluster)
@@ -55,7 +58,7 @@ func e2eTestRunTestSetup(runSuccess, cleanupSuccess bool, testDirPathSegments ..
 var _ = Describe("E2ETestSpecificationReconciler", func() {
 
 	It("should do nothing if no E2ETestRun resource exists", func() {
-		testEnv := e2eTestRunTestSetup(true, true, "testdata", "test-01")
+		testEnv := e2eTestRunTestSetup(true, true, 0, "testdata", "test-01")
 
 		Expect(testEnv.env.Client(platformCluster).DeleteAllOf(testEnv.env.Ctx, &v1alpha1.E2ETestRun{})).To(Succeed())
 
@@ -70,7 +73,7 @@ var _ = Describe("E2ETestSpecificationReconciler", func() {
 	})
 
 	It("should err if test case not found", func() {
-		testEnv := e2eTestRunTestSetup(true, true, "testdata", "test-02")
+		testEnv := e2eTestRunTestSetup(true, true, 0, "testdata", "test-02")
 
 		testRun := &v1alpha1.E2ETestRun{}
 		Expect(testEnv.env.Client(platformCluster).Get(testEnv.env.Ctx, client.ObjectKey{Name: "test-run-02", Namespace: "test-run-02-ns"}, testRun)).To(Succeed())
@@ -81,7 +84,7 @@ var _ = Describe("E2ETestSpecificationReconciler", func() {
 	})
 
 	It("should skip run and do cleanup if test already passed", func() {
-		testEnv := e2eTestRunTestSetup(true, true, "testdata", "test-03")
+		testEnv := e2eTestRunTestSetup(true, true, 0, "testdata", "test-03")
 
 		testRun := &v1alpha1.E2ETestRun{}
 		Expect(testEnv.env.Client(platformCluster).Get(testEnv.env.Ctx, client.ObjectKey{Name: "test-run-03", Namespace: "test-run-03-ns"}, testRun)).To(Succeed())
@@ -96,7 +99,7 @@ var _ = Describe("E2ETestSpecificationReconciler", func() {
 	})
 
 	It("should exit run and cleanup if test already failed", func() {
-		testEnv := e2eTestRunTestSetup(true, true, "testdata", "test-04")
+		testEnv := e2eTestRunTestSetup(true, true, 0, "testdata", "test-04")
 
 		testRun := &v1alpha1.E2ETestRun{}
 		Expect(testEnv.env.Client(platformCluster).Get(testEnv.env.Ctx, client.ObjectKey{Name: "test-run-04", Namespace: "test-run-04-ns"}, testRun)).To(Succeed())
@@ -111,7 +114,7 @@ var _ = Describe("E2ETestSpecificationReconciler", func() {
 	})
 
 	It("should  run and cleanup test case with config", func() {
-		testEnv := e2eTestRunTestSetup(true, true, "testdata", "test-05")
+		testEnv := e2eTestRunTestSetup(true, true, 0, "testdata", "test-05")
 
 		testRun := &v1alpha1.E2ETestRun{}
 		Expect(testEnv.env.Client(platformCluster).Get(testEnv.env.Ctx, client.ObjectKey{Name: "test-run-05", Namespace: "test-run-05-ns"}, testRun)).To(Succeed())
@@ -136,7 +139,7 @@ var _ = Describe("E2ETestSpecificationReconciler", func() {
 	})
 
 	It("should reconcile and run with error", func() {
-		testEnv := e2eTestRunTestSetup(false, true, "testdata", "test-06")
+		testEnv := e2eTestRunTestSetup(false, true, 0, "testdata", "test-06")
 
 		testRun := &v1alpha1.E2ETestRun{}
 		Expect(testEnv.env.Client(platformCluster).Get(testEnv.env.Ctx, client.ObjectKey{Name: "test-run-06", Namespace: "test-run-06-ns"}, testRun)).To(Succeed())
@@ -160,7 +163,7 @@ var _ = Describe("E2ETestSpecificationReconciler", func() {
 	})
 
 	It("should reconcile and cleanup with error", func() {
-		testEnv := e2eTestRunTestSetup(true, false, "testdata", "test-06")
+		testEnv := e2eTestRunTestSetup(true, false, 0, "testdata", "test-06")
 
 		testRun := &v1alpha1.E2ETestRun{}
 		Expect(testEnv.env.Client(platformCluster).Get(testEnv.env.Ctx, client.ObjectKey{Name: "test-run-06", Namespace: "test-run-06-ns"}, testRun)).To(Succeed())
@@ -184,6 +187,54 @@ var _ = Describe("E2ETestSpecificationReconciler", func() {
 		fakeTestInstance := tc.(*fakeTest)
 		Expect(fakeTestInstance.runCalled).To(BeTrue())
 		Expect(fakeTestInstance.cleanupCalled).To(BeTrue())
+	})
+
+	It("should requeue when run is failed but not yet stale", func() {
+		testEnv := e2eTestRunTestSetup(true, true, 3*24*time.Hour, "testdata", "test-07")
+
+		testRun := &v1alpha1.E2ETestRun{}
+		Expect(testEnv.env.Client(platformCluster).Get(testEnv.env.Ctx, client.ObjectKey{Name: "test-run-07", Namespace: "test-run-07-ns"}, testRun)).To(Succeed())
+
+		result := testEnv.env.ShouldReconcile(e2eTestReconciler, testutils.RequestFromObject(testRun))
+
+		Expect(result.RequeueAfter).To(BeNumerically(">", 0))
+
+		tc, _ := testEnv.reconciler.testRegistry.GetTestCase("fakeTest")
+		Expect(tc.(*fakeTest).cleanupCalled).To(BeFalse())
+	})
+
+	It("should trigger stale cleanup for a failed run older than staleAfter", func() {
+		testEnv := e2eTestRunTestSetup(true, true, time.Nanosecond, "testdata", "test-08")
+
+		testRun := &v1alpha1.E2ETestRun{}
+		Expect(testEnv.env.Client(platformCluster).Get(testEnv.env.Ctx, client.ObjectKey{Name: "test-run-08", Namespace: "test-run-08-ns"}, testRun)).To(Succeed())
+
+		result := testEnv.env.ShouldReconcile(e2eTestReconciler, testutils.RequestFromObject(testRun))
+
+		Expect(result.RequeueAfter).To(Equal(time.Duration(0)))
+
+		tc, _ := testEnv.reconciler.testRegistry.GetTestCase("fakeTest")
+		Expect(tc.(*fakeTest).cleanupCalled).To(BeTrue())
+
+		Expect(testEnv.env.Client(platformCluster).Get(testEnv.env.Ctx, client.ObjectKey{Name: "test-run-08", Namespace: "test-run-08-ns"}, testRun)).To(Succeed())
+		Expect(testRun.Status.TestCases).To(HaveLen(1))
+		Expect(isTestCaseCleanupSucceeded(testRun.Status.TestCases[0])).To(BeTrue())
+	})
+
+	It("should skip already-cleaned test cases during stale cleanup", func() {
+		testEnv := e2eTestRunTestSetup(true, true, time.Nanosecond, "testdata", "test-09")
+
+		testRun := &v1alpha1.E2ETestRun{}
+		Expect(testEnv.env.Client(platformCluster).Get(testEnv.env.Ctx, client.ObjectKey{Name: "test-run-09", Namespace: "test-run-09-ns"}, testRun)).To(Succeed())
+
+		_ = testEnv.env.ShouldReconcile(e2eTestReconciler, testutils.RequestFromObject(testRun))
+
+		tc, _ := testEnv.reconciler.testRegistry.GetTestCase("fakeTest")
+		ft := tc.(*fakeTest)
+		// Stale cleanup must run for the still-uncleaned failed case, but skip the
+		// one whose cleanup already succeeded.
+		Expect(ft.cleanedStatusNames).To(ConsistOf("caseFailed"))
+		Expect(ft.cleanedStatusNames).NotTo(ContainElement("caseCleaned"))
 	})
 
 })

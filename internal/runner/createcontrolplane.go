@@ -102,6 +102,11 @@ func (c *CreateControlPlaneTest) Cleanup(ctx context.Context, run *v1alpha1.E2ET
 	}
 
 	// Unmarshal exports from JSON
+	if len(ownStatus.Exports) == 0 {
+		log.Info("No exports recorded for control plane test case, nothing to clean up")
+		return nil
+	}
+
 	var exports Exports
 	if err := json.Unmarshal(ownStatus.Exports, &exports); err != nil {
 		return fmt.Errorf("failed to unmarshal exports from %s: %w", createControlPlane, err)

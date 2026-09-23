@@ -65,15 +65,16 @@ func NewRunCommand(so *SharedOptions) *cobra.Command {
 // RawRunOptions holds the raw flag values for the run subcommand.
 type RawRunOptions struct {
 	// kubebuilder default flags
-	MetricsAddr          string `json:"metrics-bind-address"`
-	MetricsCertPath      string `json:"metrics-cert-path"`
-	MetricsCertName      string `json:"metrics-cert-name"`
-	MetricsCertKey       string `json:"metrics-cert-key"`
-	EnableLeaderElection bool   `json:"leader-elect"`
-	ProbeAddr            string `json:"health-probe-bind-address"`
-	PprofAddr            string `json:"pprof-bind-address"`
-	SecureMetrics        bool   `json:"metrics-secure"`
-	EnableHTTP2          bool   `json:"enable-http2"`
+	MetricsAddr          string        `json:"metrics-bind-address"`
+	MetricsCertPath      string        `json:"metrics-cert-path"`
+	MetricsCertName      string        `json:"metrics-cert-name"`
+	MetricsCertKey       string        `json:"metrics-cert-key"`
+	EnableLeaderElection bool          `json:"leader-elect"`
+	ProbeAddr            string        `json:"health-probe-bind-address"`
+	PprofAddr            string        `json:"pprof-bind-address"`
+	SecureMetrics        bool          `json:"metrics-secure"`
+	EnableHTTP2          bool          `json:"enable-http2"`
+	StaleRunCleanupAfter time.Duration `json:"stale-run-cleanup-after"`
 }
 
 // RunOptions holds options for the run subcommand, combining shared and run-specific flags with resolved runtime state.
@@ -100,6 +101,8 @@ func (o *RunOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&o.MetricsCertName, "metrics-cert-name", "tls.crt", "The name of the metrics server certificate file.")
 	cmd.Flags().StringVar(&o.MetricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
 	cmd.Flags().BoolVar(&o.EnableHTTP2, "enable-http2", false, "If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	cmd.Flags().DurationVar(&o.StaleRunCleanupAfter, "stale-run-cleanup-after", 3*24*time.Hour,
+		"Duration after which a failed E2ETestRun triggers stale cleanup. Set to 0 to disable.")
 }
 
 // Complete validates and resolves the run options, configuring TLS and metrics server settings.
@@ -284,7 +287,7 @@ func (o *RunOptions) Run(ctx context.Context) error {
 	testRegistry.RegisterTestCase("createService", &runner.CreateServiceTest{OnboardingClient: onboardingCluster.Client()})
 
 	// setup TestRun reconciler
-	if err := e2etestrun.NewE2ETestRunReconciler(o.PlatformCluster, mgr.GetEventRecorder(e2etestrun.ControllerName), identity, testRegistry).SetupWithManager(mgr); err != nil {
+	if err := e2etestrun.NewE2ETestRunReconciler(o.PlatformCluster, mgr.GetEventRecorder(e2etestrun.ControllerName), identity, testRegistry, o.StaleRunCleanupAfter).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to add E2ETestRunReconciler to manager: %w", err)
 	}
 

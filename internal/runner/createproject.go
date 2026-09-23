@@ -116,6 +116,11 @@ func (c *CreateProjectTest) Cleanup(ctx context.Context, run *v1alpha1.E2ETestRu
 	}
 
 	// Unmarshal exports from JSON
+	if len(ownStatus.Exports) == 0 {
+		log.Info("No exports recorded for project test case, nothing to clean up")
+		return nil
+	}
+
 	var exports Exports
 	if err := json.Unmarshal(ownStatus.Exports, &exports); err != nil {
 		return fmt.Errorf("failed to unmarshal exports from %s: %w", createProject, err)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/openmcp-project/controller-utils/pkg/clusters"
 	"github.com/openmcp-project/controller-utils/pkg/conditions"
@@ -37,15 +38,17 @@ type E2ETestRunReconciler struct {
 	eventRecorder   events.EventRecorder
 	identity        string
 	testRegistry    *runner.TestRegistry
+	staleAfter      time.Duration
 }
 
 // NewE2ETestRunReconciler creates a new E2ETestRunReconciler with the given dependencies.
-func NewE2ETestRunReconciler(platformCluster *clusters.Cluster, recorder events.EventRecorder, identity string, testRegistry *runner.TestRegistry) *E2ETestRunReconciler {
+func NewE2ETestRunReconciler(platformCluster *clusters.Cluster, recorder events.EventRecorder, identity string, testRegistry *runner.TestRegistry, staleAfter time.Duration) *E2ETestRunReconciler {
 	return &E2ETestRunReconciler{
 		platformCluster: platformCluster,
 		eventRecorder:   recorder,
 		identity:        identity,
 		testRegistry:    testRegistry,
+		staleAfter:      staleAfter,
 	}
 }
 
@@ -68,7 +71,23 @@ func (r *E2ETestRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 
-	// Clean up test resources in reverse order
+	// Stale cleanup path: for failed runs older than staleAfter, bypass normal cleanup
+	// and attempt cleanup of all test cases regardless of pass/fail status.
+	if r.staleAfter > 0 && isRunFailedAndNotCleaned(run) {
+		timeUntilStale := r.staleAfter - time.Since(run.CreationTimestamp.Time)
+		if timeUntilStale > 0 {
+			log.Info("Run is failed but not yet stale, requeueing", "requeueAfter", timeUntilStale)
+			return ctrl.Result{RequeueAfter: timeUntilStale}, nil
+		}
+
+		log.Info("Run is stale, triggering stale cleanup", "age", time.Since(run.CreationTimestamp.Time))
+		if err := r.cleanupStaleTestCases(ctx, log, run); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	// Successful run cleanup path
 	if err := r.cleanupTestCases(ctx, log, run); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -301,6 +320,61 @@ func isTestCaseCleanupFailed(status testingopenmcpcloudv1alpha1.TestCaseStatus) 
 func isTestCaseCleanupSucceeded(status testingopenmcpcloudv1alpha1.TestCaseStatus) bool {
 	cond := conditions.GetCondition(status.Conditions, testingopenmcpcloudv1alpha1.TestCaseConditionCleanupCompleted)
 	return cond != nil && cond.Status == metav1.ConditionTrue
+}
+
+// isRunFailedAndNotCleaned returns true if the run has at least one test case that failed
+// (RunCompleted=False) and has not been successfully cleaned up yet.
+func isRunFailedAndNotCleaned(run *testingopenmcpcloudv1alpha1.E2ETestRun) bool {
+	for _, tc := range run.Status.TestCases {
+		if isTestCaseFailed(tc) && !isTestCaseCleanupSucceeded(tc) {
+			return true
+		}
+	}
+	return false
+}
+
+// cleanupStaleTestCases runs cleanup for all test cases in reverse order regardless of
+// pass/fail status. Unlike cleanupTestCases, it does not break on a non-passed test case
+// — it skips test cases with no status entry (never ran) or already-succeeded cleanup.
+func (r *E2ETestRunReconciler) cleanupStaleTestCases(ctx context.Context, log logging.Logger, run *testingopenmcpcloudv1alpha1.E2ETestRun) error {
+	for i := len(run.Spec.TestCases) - 1; i >= 0; i-- {
+		testCaseSpec := run.Spec.TestCases[i]
+		test, found := r.testRegistry.GetTestCase(testCaseSpec.Name)
+		if !found {
+			log.Error(nil, "test not found in registry during stale cleanup", "testName", testCaseSpec.Name)
+			continue
+		}
+
+		config, err := readConfig(testCaseSpec.Config)
+		if err != nil {
+			log.Error(err, "error reading test case config during stale cleanup", "testName", testCaseSpec.Name)
+			return err
+		}
+		config["identity"] = r.identity
+
+		statusName := test.StatusName(config)
+
+		existingStatus, found := runner.GetStatus(statusName, run.Status.TestCases)
+		if !found {
+			log.Info("Stale cleanup: no status found, skipping", "testName", statusName)
+			continue
+		}
+		if isTestCaseCleanupSucceeded(*existingStatus) {
+			log.Info("Stale cleanup: already completed, skipping", "testName", statusName)
+			continue
+		}
+
+		log.Info("Running stale cleanup for test", "testName", statusName)
+		cleanupErr := test.Cleanup(ctx, run, config)
+
+		if updateErr := r.updateStatusAfterCleanup(ctx, log, run, statusName, cleanupErr); updateErr != nil {
+			return updateErr
+		}
+		if cleanupErr != nil {
+			return cleanupErr
+		}
+	}
+	return nil
 }
 
 // setTestCaseCondition updates or adds a condition to a test case status using the conditions updater

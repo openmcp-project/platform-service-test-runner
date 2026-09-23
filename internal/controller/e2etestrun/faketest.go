@@ -14,9 +14,21 @@ type fakeTest struct {
 	receivedConfig             runner.Config
 	runCalled                  bool
 	cleanupCalled              bool
+	// cleanedStatusNames records the StatusName of every test case Cleanup was invoked for,
+	// so tests can assert which specific cases were (or were not) cleaned up.
+	cleanedStatusNames []string
 }
 
-func (ft *fakeTest) StatusName(_ runner.Config) string { return "fakeTest" }
+// StatusName returns the value of the optional "name" config key, defaulting to "fakeTest".
+// This lets a single fakeTest instance back multiple spec entries with distinct status names.
+func (ft *fakeTest) StatusName(config runner.Config) string {
+	if config != nil {
+		if name, ok := config["name"].(string); ok && name != "" {
+			return name
+		}
+	}
+	return "fakeTest"
+}
 
 func (ft *fakeTest) Run(_ context.Context, run *v1alpha1.E2ETestRun, config runner.Config) (runner.Exports, runner.DebugInfo, error) {
 	ft.runCalled = true
@@ -32,6 +44,7 @@ func (ft *fakeTest) Cleanup(_ context.Context, run *v1alpha1.E2ETestRun, config 
 	ft.cleanupCalled = true
 	ft.receivedRun = run
 	ft.receivedConfig = config
+	ft.cleanedStatusNames = append(ft.cleanedStatusNames, ft.StatusName(config))
 	if !ft.cleanupSuccess {
 		return fmt.Errorf("some cleanup error")
 	}
