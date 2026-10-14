@@ -5,9 +5,9 @@ go 1.27.2
 require (
 	github.com/onsi/ginkgo/v2 v2.33.0
 	github.com/onsi/gomega v1.44.0
-	github.com/openmcp-project/controller-utils v0.33.1
-	github.com/openmcp-project/openmcp-operator/api v1.4.1
-	github.com/openmcp-project/openmcp-operator/lib v1.4.1
+	github.com/openmcp-project/controller-utils v0.33.2
+	github.com/openmcp-project/openmcp-operator/api v1.4.2
+	github.com/openmcp-project/openmcp-operator/lib v1.4.2
 	github.com/openmcp-project/platform-service-project-workspace/api/v2 v2.4.1
 	github.com/openmcp-project/project-workspace-operator/api v1.4.0
 	github.com/robfig/cron/v3 v3.0.1
