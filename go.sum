@@ -143,8 +143,8 @@ github.com/openmcp-project/openmcp-operator/api v1.4.2 h1:hByhCMUYZm/G6bOdxv6qHl
 github.com/openmcp-project/openmcp-operator/api v1.4.2/go.mod h1:6OfZhMDYjs82clPYRPlFaAU/WkGM7bMJQWr5h5856F4=
 github.com/openmcp-project/openmcp-operator/lib v1.4.2 h1:X34lPFnjJ7minJHrNNA1+LMy4PtF0LEiyVxcD+oYnE0=
 github.com/openmcp-project/openmcp-operator/lib v1.4.2/go.mod h1:8HRNUH3Y2MHha7Vh/2+woZXCUx1tTOVAmfBMbduHfPc=
-github.com/openmcp-project/platform-service-project-workspace/api/v2 v2.4.1 h1:j6nRfFQuQbGu/adu+/hOg/NgQz26b2gIjH6Hvwbod04=
-github.com/openmcp-project/platform-service-project-workspace/api/v2 v2.4.1/go.mod h1:H5glcDMMLsvJXzCi1vWbPP/222lWf5JamL+BVquWgSQ=
+github.com/openmcp-project/platform-service-project-workspace/api/v2 v2.4.2 h1:Ksw61jPBLbHGZkIxCPuSlQKdKLBkzBMc97cMZ1GBMmI=
+github.com/openmcp-project/platform-service-project-workspace/api/v2 v2.4.2/go.mod h1:q71ohO0mRomv1qc2y8dy9/ibzr/ZjGXfTKl4kiD7Ojg=
 github.com/openmcp-project/project-workspace-operator/api v1.4.0 h1:ysyN95Dyw2giHl8oEODpzpdLCVxEEZ5E28ycyLe/5kA=
 github.com/openmcp-project/project-workspace-operator/api v1.4.0/go.mod h1:ke0xUUxPNWM5Xz7x+1IPviJYIJFqilzsey+NxSGH3Pc=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
